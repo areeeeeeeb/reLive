@@ -8,7 +8,11 @@
     "dev": "nodemon --exec tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate:create": "node-pg-migrate create",
+    "migrate:up": "node-pg-migrate up",
+    "migrate:down": "node-pg-migrate down",
+    "migrate:redo": "node-pg-migrate redo"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -26,14 +30,25 @@
   "homepage": "https://github.com/areeeeeeeb/reLive#readme",
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
+    "axios": "^1.13.2",
+    "cloudinary": "^2.9.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "express-jwt": "^8.5.1",
+    "express-validator": "^7.3.1",
+    "jwks-rsa": "^3.2.1",
+    "multer": "^2.0.2",
+    "node-pg-migrate": "^8.0.4",
+    "pg": "^8.17.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.0.0",
     "@types/node": "^25.0.9",
+    "@types/node-pg-migrate": "^2.3.1",
+    "@types/pg": "^8.16.0",
     "nodemon": "^3.1.11",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
