@@ -1,19 +1,22 @@
-import { Redirect, Route } from 'react-router-dom';
-import {
-  IonApp,
-  IonIcon,
-  IonLabel,
-  IonRouterOutlet,
-  IonTabBar,
-  IonTabButton,
-  IonTabs,
-  setupIonicReact
-} from '@ionic/react';
+import { IonApp, IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { images, square, triangle } from 'ionicons/icons';
-import Tab1 from './pages/Tab1';
-import Tab2 from './pages/Tab2';
-import Tab3 from './pages/Tab3';
+import { useState } from 'react';
+import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Signup from './pages/Signup';;
+import { Route, Redirect } from 'react-router-dom';
+import { home, search, person, cloudUpload } from 'ionicons/icons';
+import Home from './pages/Home';
+import Search from './pages/Search';
+import UserProfile from './pages/Profile';
+import Event from './pages/Event';
+import Watch from './pages/Watch';
+import Upload from './pages/Upload';
+import Venue from './pages/Venue';
+import Artist from './pages/Artist';
+
+// tailwind css
+import './theme/tailwind.css';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -32,45 +35,79 @@ import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 
 /* Theme variables */
-import './theme/variables.css';
+import './theme/ionic.css';
 
 setupIonicReact();
 
-const App: React.FC = () => (
-  <IonApp>
-    <IonReactRouter>
-      <IonTabs>
-        <IonRouterOutlet>
-          <Route exact path="/tab1">
-            <Tab1 />
-          </Route>
-          <Route exact path="/tab2">
-            <Tab2 />
-          </Route>
-          <Route path="/tab3">
-            <Tab3 />
-          </Route>
-          <Route exact path="/">
-            <Redirect to="/tab1" />
-          </Route>
-        </IonRouterOutlet>
-        <IonTabBar slot="bottom">
-          <IonTabButton tab="tab1" href="/tab1">
-            <IonIcon aria-hidden="true" icon={triangle} />
-            <IonLabel>Tab 1</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="tab2" href="/tab2">
-            <IonIcon icon={images} />
-            <IonLabel>Photos</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="tab3" href="/tab3">
-            <IonIcon aria-hidden="true" icon={square} />
-            <IonLabel>Tab 3</IonLabel>
-          </IonTabButton>
-        </IonTabBar>
-      </IonTabs>
-    </IonReactRouter>
-  </IonApp>
-);
+const App: React.FC = () => {
+  // TODO: Replace with actual auth state management (Context, Redux, etc.)
+  const [isAuthenticated] = useState(true);
+
+  return (
+    <IonApp>
+      <IonReactRouter>
+        {isAuthenticated ? (
+          // protected routes - user is logged in
+          <IonTabs>
+            <IonRouterOutlet>
+              {/* Tab roots */}
+              <Route exact path="/home" component={Home} />
+              <Route exact path="/search" component={Search} />
+              <Route exact path="/upload" component={Upload} />
+              <Route exact path="/profile" component={UserProfile} />
+
+              {/* Shared routes - accessible from any tab */}
+              <Route exact path="/event/:eventId" component={Event} />
+              <Route exact path="/event/:eventId/watch" component={Watch} />
+              <Route exact path="/event/:eventId/upload" component={Upload} />
+              <Route exact path="/venue/:venueId" component={Venue} />
+              <Route exact path="/artist/:artistId" component={Artist} />
+
+              <Route exact path="/tabs">
+                <Redirect to="/home" />
+              </Route>
+            </IonRouterOutlet>
+
+            <IonTabBar slot="bottom" className='pb-safe'>
+              <IonTabButton tab="home" href="/home">
+                <IonIcon icon={home} />
+                <IonLabel>Home</IonLabel>
+              </IonTabButton>
+
+              <IonTabButton tab="search" href="/search">
+                <IonIcon icon={search} />
+                <IonLabel>Search</IonLabel>
+              </IonTabButton>
+
+              <IonTabButton tab="upload" href="/upload">
+                <IonIcon icon={cloudUpload} />
+                <IonLabel>Upload</IonLabel>
+              </IonTabButton>
+
+              <IonTabButton tab="profile" href="/profile">
+                <IonIcon icon={person} />
+                <IonLabel>Profile</IonLabel>
+              </IonTabButton>
+            </IonTabBar>
+          </IonTabs>
+        ) : (
+          // Public routes - user is not logged in
+          <IonRouterOutlet>
+            <Route exact path="/landing" component={Landing} />
+            <Route exact path="/login" component={Login} />
+            <Route exact path="/signup" component={Signup} />
+            <Route exact path="/">
+              <Redirect to="/landing" />
+            </Route>
+            {/* Catch-all redirect to landing if trying to access protected routes */}
+            <Route>
+              <Redirect to="/landing" />
+            </Route>
+          </IonRouterOutlet>
+        )}
+      </IonReactRouter>
+    </IonApp>
+  );
+};
 
 export default App;
