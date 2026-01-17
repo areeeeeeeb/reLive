@@ -1,5 +1,5 @@
 {
-  "name": "photo-gallery-capacitor-react",
+  "name": "relive",
   "private": true,
   "version": "4.0.0",
   "type": "module",
@@ -41,6 +41,5 @@
     "eslint-plugin-react": "^7.32.2",
     "typescript": "^5.1.6",
     "vite": "^4.3.9"
-  },
-  "description": "Build a photo gallery app that runs on iOS, Android, and the web - with just one codebase."
+  }
 }
