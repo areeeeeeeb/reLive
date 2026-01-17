@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/* ionic safe area CSS variables for mobile notches/safe areas */
+:root {
+  --ion-safe-area-top: env(safe-area-inset-top, 0);
+  --ion-safe-area-bottom: env(safe-area-inset-bottom, 0);
+  --ion-safe-area-left: env(safe-area-inset-left, 0);
+  --ion-safe-area-right: env(safe-area-inset-right, 0);
+}
+
+/* safe area utilities */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: var(--ion-safe-area-bottom);
+  }
+  .pt-safe {
+    padding-top: var(--ion-safe-area-top);
+  }
+  .pl-safe {
+    padding-left: var(--ion-safe-area-left);
+  }
+  .pr-safe {
+    padding-right: var(--ion-safe-area-right);
+  }
+  .mb-safe {
+    margin-bottom: var(--ion-safe-area-bottom);
+  }
+  .mt-safe {
+    margin-top: var(--ion-safe-area-top);
+  }
+  .ml-safe {
+    margin-left: var(--ion-safe-area-left);
+  }
+  .mr-safe {
+    margin-right: var(--ion-safe-area-right);
+  }
+}
