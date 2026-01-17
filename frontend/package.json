@@ -10,8 +10,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@auth0/auth0-react": "^2.11.0",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
+    "@capacitor/browser": "^8.0.0",
     "@capacitor/camera": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "@capacitor/filesystem": "^8.0.0",

@@ -1,6 +1,9 @@
 import { IonApp, IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
+import { App as CapApp } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';;
@@ -40,8 +43,30 @@ import './theme/ionic.css';
 setupIonicReact();
 
 const App: React.FC = () => {
-  // TODO: Replace with actual auth state management (Context, Redux, etc.)
-  const [isAuthenticated] = useState(true);
+  // get Auth0 authentication state and callback handler
+  const { isAuthenticated, isLoading, handleRedirectCallback } = useAuth0();
+
+  useEffect(() => {
+    // handle the 'appUrlOpen' event and call `handleRedirectCallback`
+    CapApp.addListener('appUrlOpen', async ({ url }) => {
+      if (url.includes('state') && (url.includes('code') || url.includes('error'))) {
+        await handleRedirectCallback(url);
+      }
+      // no-op on Android
+      await Browser.close();
+    });
+  }, [handleRedirectCallback]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <IonApp>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <div>Loading...</div>
+        </div>
+      </IonApp>
+    );
+  }
 
   return (
     <IonApp>
