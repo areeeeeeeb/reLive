@@ -21,7 +21,7 @@ const Tabs: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Routes where tab bar should be hidden
-  const hiddenTabBarRoutes = ['/upload'];
+  const hiddenTabBarRoutes = ['/upload', '/watch'];
 
   const isRouteActive = (href: string) => {
     return location.pathname === href;

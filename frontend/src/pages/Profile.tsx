@@ -8,7 +8,7 @@ const UserProfile: React.FC = () => {
   const { logout } = useAuth();
 
   return (
-    <PageContent title="profile">
+    <PageContent title={user?.name || 'Profile'} bgColor='black'>
       <div className="ion-text-center">
         {isLoading ? (
           <p>Loading profile...</p>
