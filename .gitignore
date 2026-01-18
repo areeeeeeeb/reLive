@@ -216,5 +216,16 @@ repomix-output.*
 # Node Modules
 node_modules/
 
+# Test Data
+Concert Video Data/
+*.MOV
+*.mov
+*.mp4
+*.MP4
+*.avi
+*.AVI
+
+#Testing Data
 # macOS
 .DS_Store
+
