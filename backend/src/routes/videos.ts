@@ -5,6 +5,7 @@ import pool from '../config/database';
 import fs from 'fs/promises';
 import { extractVideoMetadata } from '../utils/videoMetadata';
 import { detectConcert } from '../services/concertDetection';
+import { matchSongByFingerprint } from '../services/songMatching';
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ const upload = multer({
 
 /**
  * POST /api/videos/upload
- * Upload video with full pipeline
+ * Upload video with full pipeline including song matching
  */
 router.post('/upload', upload.single('video'), async (req: Request, res: Response) => {
   let tempFilePath: string | undefined;
@@ -55,7 +56,7 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
       contentType: req.file.mimetype,
     });
     console.log('   ✅ Upload complete!');
-    console.log('   📍 CDN URL:', uploadResult.cdnUrl);
+    console.log('   🔗 CDN URL:', uploadResult.cdnUrl);
     console.log('');
 
     // STEP 3: Save to database
@@ -124,8 +125,32 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
       console.log('');
     }
 
-    // STEP 5: Clean up temp file
-    console.log('5️⃣  STEP 5: Cleaning up...');
+    // STEP 5: Song Matching via Audio Fingerprinting (Phase 4)
+    let songMatchResult = null;
+    const concertId = concertDetectionResult?.match?.concertId;
+    
+    console.log('5️⃣  STEP 5: Matching song via audio fingerprinting...');
+    try {
+      songMatchResult = await matchSongByFingerprint(
+        video.id,
+        tempFilePath,
+        concertId
+      );
+
+      if (songMatchResult.success) {
+        console.log('   ✅ Song matched automatically!');
+      } else {
+        console.log(`   ℹ️  ${songMatchResult.message}`);
+        console.log('   → User can select from setlist or enter manually later');
+      }
+    } catch (error) {
+      console.error('   ⚠️  Song matching failed (non-critical):', error);
+      // Don't fail the upload if song matching fails
+    }
+    console.log('');
+
+    // STEP 6: Clean up temp file
+    console.log('6️⃣  STEP 6: Cleaning up...');
     await fs.unlink(tempFilePath);
     console.log('   ✅ Temp file deleted');
     console.log('');
@@ -135,7 +160,7 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
     console.log('✅ ========================================');
     console.log('');
 
-    // Return success response with concert info
+    // Return success response with concert and song info
     res.status(201).json({
       success: true,
       message: 'Video uploaded successfully!',
@@ -147,6 +172,7 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
         thumbnailUrl: video.thumbnail_url,
         duration: video.duration_seconds,
         recordedAt: video.recorded_at,
+        songId: video.song_id, // Will be set if song matching succeeded
         createdAt: video.created_at,
       },
       metadata: {
@@ -181,6 +207,14 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
         distance: concertDetectionResult.match.details.distance,
         daysDifference: concertDetectionResult.match.details.daysDifference
       } : null,
+      song: songMatchResult?.success ? {
+        id: songMatchResult.songId,
+        title: songMatchResult.match?.songTitle,
+        artistName: songMatchResult.match?.artistName,
+        albumName: songMatchResult.match?.albumName,
+        confidence: songMatchResult.confidence,
+        method: songMatchResult.method,
+      } : null,
     });
 
   } catch (error) {
@@ -214,7 +248,7 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { userId, concertId, limit = 50, offset = 0 } = req.query;
+    const { userId, concertId, songId, limit = 50, offset = 0 } = req.query;
 
     let query = 'SELECT * FROM videos WHERE 1=1';
     const params: any[] = [];
@@ -229,6 +263,12 @@ router.get('/', async (req: Request, res: Response) => {
     if (concertId) {
       query += ` AND concert_id = $${paramCount}`;
       params.push(concertId);
+      paramCount++;
+    }
+
+    if (songId) {
+      query += ` AND song_id = $${paramCount}`;
+      params.push(songId);
       paramCount++;
     }
 
