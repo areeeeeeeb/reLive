@@ -77,7 +77,7 @@ export const BackButton = ({
     <>
       <IonButtons class="-my-2 -mx-2">
         <IonButton onClick={() => handleBack()}>
-          <IonIcon slot="icon-only" icon={arrowBack} />
+          <IonIcon slot="icon-only" icon={arrowBack} style={{ color: 'white' }} />
         </IonButton>
       </IonButtons>
     </>

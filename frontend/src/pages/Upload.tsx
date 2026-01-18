@@ -33,6 +33,7 @@ const Upload: React.FC = () => {
   const [showSongSelection, setShowSongSelection] = useState(false);
   const [setlist, setSetlist] = useState<Song[]>([]);
   const [loadingSetlist, setLoadingSetlist] = useState(false);
+  const [isDone, setIsDone] = useState(false);
 
   useEffect(() => {
     // check if there are pending files from the tab bar
@@ -180,7 +181,8 @@ const Upload: React.FC = () => {
     } else {
       // All videos verified, proceed to next page
       console.log('All videos verified');
-      setShowSheet(false);
+      setIsDone(true);
+      // Navigate immediately without waiting for state update
       router.push(`/profile`);
     }
   };
@@ -308,7 +310,7 @@ const Upload: React.FC = () => {
       )}
 
       {/* Action Sheet */}
-      <Sheet open={showSheet || (currentStep > 0 && currentStep <= uploadedVideos.length && !showSongSelection)}>
+      <Sheet open={showSheet || (currentStep > 0 && currentStep <= uploadedVideos.length && !showSongSelection && !isDone)}>
         <SheetContent
           side="bottom"
           hideOverlay

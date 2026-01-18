@@ -64,10 +64,13 @@ export const useAuth = () => {
     }
 
     // Auth0 user.sub format is typically "auth0|123" or "google-oauth2|456"
-    // Extract the numeric ID after the pipe
+    // Extract the part after the pipe
     const parts = rest.user.sub.split('|');
     if (parts.length > 1) {
-      const numericId = parseInt(parts[1]);
+      const idString = parts[1];
+      // Take last 6 digits to avoid integer overflow in PostgreSQL
+      const last6Digits = idString.slice(-6);
+      const numericId = parseInt(last6Digits);
       return isNaN(numericId) ? null : numericId;
     }
 
