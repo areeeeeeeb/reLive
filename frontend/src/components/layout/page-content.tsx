@@ -48,7 +48,7 @@ export const PageContent = React.forwardRef<HTMLDivElement, PageLayoutProps>(
       minimal = false,
       confirmBeforeBack = false,
       desktopHeaderVariant = 'default',
-      bgColor = 'white',
+      bgColor = 'black',
       refreshable = true,
       onRefresh,
       hintURL,
