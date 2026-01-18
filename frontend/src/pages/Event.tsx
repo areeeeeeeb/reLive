@@ -3,9 +3,9 @@ import { useParams, useHistory } from 'react-router-dom';
 import { PageContent } from '@/components/layout/page-content';
 import { useEffect, useState } from 'react';
 import { getConcertPage, ConcertPageResponse } from '@/lib/api/concerts';
-import { Heart, Music, Play, Plus, Share, Upload, UsersRound, Video } from 'lucide-react';
+import { Heart, Music, Play, Plus, Share, UsersRound, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableRow, TableCell } from '@/components/ui/table';
+import { SetlistTable } from '@/components/SetlistTable';
 
 const Event: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -112,7 +112,7 @@ const Event: React.FC = () => {
           <div className='flex flex-col'>
             <Button 
               variant='secondary' 
-              className='rounded-full bg-neutral-400 size-16 flex  items-center justify-center'
+              className='rounded-full bg-neutral-400 hover:bg-neutral-300! size-16 flex  items-center justify-center'
               onClick={() => history.push(`/event/${eventId}/watch`)}
             >
               <Play className='size-10  text-black ' />
@@ -122,21 +122,21 @@ const Event: React.FC = () => {
           </div>
 
           <div className='flex flex-col'>
-            <Button variant='secondary' className='rounded-full bg-neutral-400 size-16 flex  items-center justify-center'>
+            <Button variant='secondary' className='rounded-full bg-neutral-400 hover:bg-neutral-300! size-16 flex  items-center justify-center'>
               <Plus className='size-10  text-black ' />
             </Button>
             <div className='text-center text-sm mt-1'>Upload</div>
           </div>
 
           <div className='flex flex-col'>
-            <Button variant='secondary'className='rounded-full bg-neutral-400 size-16 flex  items-center justify-center'>
+            <Button variant='secondary'className='rounded-full bg-neutral-400 hover:bg-neutral-300! size-16 flex  items-center justify-center'>
               <Heart className='size-10  text-black ' />
             </Button>
             <div className='text-center text-sm mt-1'>Like</div>
           </div>
 
           <div className='flex flex-col'>
-            <Button variant='secondary' className='rounded-full bg-neutral-400 size-16 flex  items-center justify-center'>
+            <Button variant='secondary' className='rounded-full bg-neutral-400 hover:bg-neutral-300! size-16 flex  items-center justify-center'>
               <Share className='size-10  text-black ' />
             </Button>
             <div className='text-center text-sm mt-1'>Share</div>
@@ -144,33 +144,7 @@ const Event: React.FC = () => {
         </div>
 
         {/* setlist */}
-        {setlist.length > 0 && (
-          <div className=" rounded-lg">
-            <p className="text-lg font-bold  flex items-center gap-2">
-              
-              Setlist
-            </p>
-            <Table className=''>
-              <TableBody className='bg-none'>
-                {setlist.map((song) => (
-                  <TableRow key={song.id} className="border-zinc-800 hover:bg-opacity-0 border-b-0">
-                    <TableCell className="font-mono">
-                      {song.order_in_setlist}
-                    </TableCell>
-                    <TableCell className="">{song.title}</TableCell>
-                    <TableCell className="">
-                      {parseInt(song.video_count) > 0 && (
-                        <span className="text-xs  px-2 py-1 rounded">
-                          {song.video_count} video{parseInt(song.video_count) !== 1 ? 's' : ''}
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        <SetlistTable setlist={setlist} />
 
       </div>
     </PageContent>

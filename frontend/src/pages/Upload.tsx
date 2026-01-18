@@ -7,10 +7,12 @@ import { getPendingFiles, clearPendingFiles, hasPendingFiles, getShouldClearVide
 import { Button } from '@/components/ui/button';
 import { UserVideo } from '@/hooks/useVideoGallery';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { uploadVideo, UploadVideoResponse } from '@/lib/api/videos';
+import { uploadVideo, UploadVideoResponse, updateVideoSong } from '@/lib/api/videos';
 import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/hooks/useAuth';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { getConcertSetlist, Song } from '@/lib/api/concerts';
+import { SetlistTable } from '@/components/SetlistTable';
 
 interface UploadedVideoData extends UserVideo {
   uploadResponse?: UploadVideoResponse;
@@ -28,6 +30,9 @@ const Upload: React.FC = () => {
   const [slideOutUpload, setSlideOutUpload] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showSongSelection, setShowSongSelection] = useState(false);
+  const [setlist, setSetlist] = useState<Song[]>([]);
+  const [loadingSetlist, setLoadingSetlist] = useState(false);
 
   useEffect(() => {
     // check if there are pending files from the tab bar
@@ -145,14 +150,73 @@ const Upload: React.FC = () => {
     router.goBack();
   };
 
-  const handleYes = () => {
-    // Move to next video or finish
+  const handleYes = async () => {
+    const currentVideo = uploadedVideos[currentStep - 1];
+
+    // Check if concert was detected but no song
+    if (currentVideo?.uploadResponse?.concert && !currentVideo?.uploadResponse?.video?.songId) {
+      // Fetch setlist and show song selection
+      setLoadingSetlist(true);
+      try {
+        const songs = await getConcertSetlist(currentVideo.uploadResponse.concert.id);
+        setSetlist(songs);
+        setShowSongSelection(true);
+      } catch (error) {
+        console.error('Error fetching setlist:', error);
+        // If setlist fetch fails, just move to next video
+        moveToNextVideo();
+      } finally {
+        setLoadingSetlist(false);
+      }
+    } else {
+      // Move to next video or finish
+      moveToNextVideo();
+    }
+  };
+
+  const moveToNextVideo = () => {
     if (currentStep < uploadedVideos.length) {
       setCurrentStep(currentStep + 1);
     } else {
       // All videos verified, proceed to next page
       console.log('All videos verified');
+      setShowSheet(false);
+      router.push(`/profile`);
     }
+  };
+
+  const handleSongSelect = async (songId: number) => {
+    const currentVideo = uploadedVideos[currentStep - 1];
+
+    try {
+      await updateVideoSong(currentVideo.uploadResponse!.video.id, songId);
+
+      // Update local state
+      const updatedVideos = [...uploadedVideos];
+      updatedVideos[currentStep - 1] = {
+        ...currentVideo,
+        uploadResponse: {
+          ...currentVideo.uploadResponse!,
+          video: {
+            ...currentVideo.uploadResponse!.video,
+            songId
+          }
+        }
+      };
+      setUploadedVideos(updatedVideos);
+
+      // Close song selection and move to next
+      setShowSongSelection(false);
+      moveToNextVideo();
+    } catch (error) {
+      console.error('Error updating video song:', error);
+      // TODO: Show error to user
+    }
+  };
+
+  const handleSkipSongSelection = () => {
+    setShowSongSelection(false);
+    moveToNextVideo();
   };
 
   const handleNo = () => {
@@ -244,7 +308,7 @@ const Upload: React.FC = () => {
       )}
 
       {/* Action Sheet */}
-      <Sheet open={showSheet || (currentStep > 0 && currentStep <= uploadedVideos.length)}>
+      <Sheet open={showSheet || (currentStep > 0 && currentStep <= uploadedVideos.length && !showSongSelection)}>
         <SheetContent
           side="bottom"
           hideOverlay
@@ -264,17 +328,55 @@ const Upload: React.FC = () => {
               </>
             ) : (
               <>
-                <p className='text-lg mb-2'>
+                <p className='text-lg mb-2 text-black'>
                   All this information look correct?
                 </p>
-                <Button variant="outline" onClick={handleNo}>
+                <Button variant="outline" className="text-black hover:text-black" onClick={handleNo}>
                   No
                 </Button>
-                <Button onClick={handleYes}>
-                  Yes
+                <Button onClick={handleYes} disabled={loadingSetlist}>
+                  {loadingSetlist ? <Spinner /> : 'Yes'}
                 </Button>
               </>
             )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Song Selection Sheet */}
+      <Sheet open={showSongSelection}>
+        <SheetContent
+          side="bottom"
+          hideOverlay
+          hideCloseButton
+          className="rounded-t-lg border-t-0 p-8 bg-neutral-400 flex max-h-[80vh]"
+        >
+          <div className="flex flex-col gap-4 pb-safe w-full overflow-hidden">
+            <div className="flex flex-col gap-2">
+              <p className='text-xl font-bold text-black'>Which song is this?</p>
+              <p className='text-sm text-black'>
+                Select the song from the setlist
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto rounded-md border p-1 gap-1 flex flex-col">
+              {setlist.map((song, index) => (
+                <div
+                  key={song.id}
+                  onClick={() => handleSongSelect(song.id)}
+                  className="cursor-pointer focus:bg-accent/5 focus:text-black relative flex w-full cursor-default items-center gap-3 rounded-sm py-1.5 px-2 text-sm outline-hidden select-none hover:bg-accent/10 hover:text-accent-black transition-colors"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-black">
+                    {index + 1}
+                  </span>
+                  <span className="font-medium text-left text-black">{song.title}</span>
+                </div>
+              ))}
+            </div>
+
+            <Button variant="secondary" onClick={handleSkipSongSelection} className="mt-4">
+              Skip
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
