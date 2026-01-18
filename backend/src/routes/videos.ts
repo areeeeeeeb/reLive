@@ -1,11 +1,13 @@
 import express, { Request, Response } from 'express';
 import multer from 'multer';
-import { uploadVideo, deleteVideo } from '../config/spaces';
+import { uploadVideo, deleteVideo, uploadThumbnail } from '../config/spaces';
 import pool from '../config/database';
 import fs from 'fs/promises';
 import { extractVideoMetadata } from '../utils/videoMetadata';
 import { detectConcert } from '../services/concertDetection';
 import { matchSongByFingerprint } from '../services/songMatching';
+import { extractThumbnailFromVideo, cleanupThumbnailFile } from '../utils/thumbnailGenerator';
+import { updateConcertThumbnail } from '../services/concertDatabase';
 
 const router = express.Router();
 
@@ -23,6 +25,7 @@ const upload = multer({
  */
 router.post('/upload', upload.single('video'), async (req: Request, res: Response) => {
   let tempFilePath: string | undefined;
+  let tempThumbnailPath: string | undefined;
 
   try {
     if (!req.file) {
@@ -102,7 +105,7 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
     let concertDetectionResult = null;
     if (metadata.latitude && metadata.longitude && metadata.recordedAt) {
       console.log('4️⃣  STEP 4: Detecting concert...');
-      
+
       concertDetectionResult = await detectConcert({
         videoId: video.id,
         userId: userId,
@@ -113,7 +116,7 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
         locationState: metadata.locationState,
         locationCountry: metadata.locationCountry,
       });
-      
+
       if (concertDetectionResult.success) {
         console.log('   ✅ Concert detected!');
       } else {
@@ -122,6 +125,58 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
       console.log('');
     } else {
       console.log('4️⃣  STEP 4: Skipping concert detection (no GPS or timestamp)');
+      console.log('');
+    }
+
+    // STEP 4.5: Generate Concert Thumbnail (if concert detected)
+    if (concertDetectionResult?.success && concertDetectionResult.match) {
+      const concertId = concertDetectionResult.match.concertId;
+
+      console.log('4️⃣ .5 STEP 4.5: Generating concert thumbnail...');
+      try {
+        // Extract thumbnail from video at midpoint
+        tempThumbnailPath = await extractThumbnailFromVideo(tempFilePath, undefined, {
+          maxWidth: 1280,
+          maxHeight: 720,
+          quality: 2,
+          position: 0.5, // midpoint
+        });
+
+        // Upload thumbnail to DigitalOcean Spaces
+        const thumbnailUploadResult = await uploadThumbnail(tempThumbnailPath, {
+          folder: 'thumbnails/concerts',
+        });
+
+        // Update concert with thumbnail (only if it doesn't have one)
+        const thumbnailUpdated = await updateConcertThumbnail(
+          concertId,
+          thumbnailUploadResult.cdnUrl,
+          thumbnailUploadResult.key
+        );
+
+        if (thumbnailUpdated) {
+          console.log('   ✅ Concert thumbnail generated and uploaded!');
+          console.log(`   🖼️  Thumbnail URL: ${thumbnailUploadResult.cdnUrl}`);
+        }
+
+        // Clean up thumbnail temp file
+        await cleanupThumbnailFile(tempThumbnailPath);
+        tempThumbnailPath = undefined;
+
+      } catch (thumbnailError) {
+        console.error('   ⚠️  Thumbnail generation failed (non-critical):', thumbnailError);
+        // Don't fail the entire upload if thumbnail generation fails
+
+        // Attempt cleanup
+        if (tempThumbnailPath) {
+          try {
+            await cleanupThumbnailFile(tempThumbnailPath);
+            tempThumbnailPath = undefined;
+          } catch (cleanupError) {
+            console.error('   ⚠️  Failed to cleanup thumbnail temp file');
+          }
+        }
+      }
       console.log('');
     }
 
@@ -227,13 +282,23 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
     console.error(error);
     console.error('');
 
-    // Clean up temp file on error
+    // Clean up temp video file on error
     if (tempFilePath) {
       try {
         await fs.unlink(tempFilePath);
-        console.log('🗑️  Temp file cleaned up');
+        console.log('🗑️  Temp video file cleaned up');
       } catch (cleanupError) {
-        console.error('⚠️  Failed to delete temp file:', cleanupError);
+        console.error('⚠️  Failed to delete temp video file:', cleanupError);
+      }
+    }
+
+    // Clean up temp thumbnail file on error
+    if (tempThumbnailPath) {
+      try {
+        await cleanupThumbnailFile(tempThumbnailPath);
+        console.log('🗑️  Temp thumbnail file cleaned up');
+      } catch (cleanupError) {
+        console.error('⚠️  Failed to delete temp thumbnail file:', cleanupError);
       }
     }
 
