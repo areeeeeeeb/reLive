@@ -3,10 +3,8 @@ import multer from 'multer';
 import { uploadVideo, deleteVideo } from '../config/spaces';
 import pool from '../config/database';
 import fs from 'fs/promises';
-import path from 'path';
-import exifr from 'exifr';
-import axios from 'axios';
 import { extractVideoMetadata } from '../utils/videoMetadata';
+import { detectConcert } from '../services/concertDetection';
 
 const router = express.Router();
 
@@ -16,9 +14,7 @@ const upload = multer({
   limits: {
     fileSize: 500 * 1024 * 1024, // 500MB limit
   },
-  // Remove fileFilter entirely - accept all files
 });
-
 
 /**
  * POST /api/videos/upload
@@ -101,8 +97,35 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
     console.log('   🆔 Video ID:', video.id);
     console.log('');
 
-    // STEP 4: Clean up temp file
-    console.log('4️⃣  STEP 4: Cleaning up...');
+    // STEP 4: Concert Detection (if GPS + timestamp available)
+    let concertDetectionResult = null;
+    if (metadata.latitude && metadata.longitude && metadata.recordedAt) {
+      console.log('4️⃣  STEP 4: Detecting concert...');
+      
+      concertDetectionResult = await detectConcert({
+        videoId: video.id,
+        userId: userId,
+        latitude: metadata.latitude,
+        longitude: metadata.longitude,
+        recordedAt: metadata.recordedAt,
+        locationCity: metadata.locationCity,
+        locationState: metadata.locationState,
+        locationCountry: metadata.locationCountry,
+      });
+      
+      if (concertDetectionResult.success) {
+        console.log('   ✅ Concert detected!');
+      } else {
+        console.log('   ℹ️  No concert match found');
+      }
+      console.log('');
+    } else {
+      console.log('4️⃣  STEP 4: Skipping concert detection (no GPS or timestamp)');
+      console.log('');
+    }
+
+    // STEP 5: Clean up temp file
+    console.log('5️⃣  STEP 5: Cleaning up...');
     await fs.unlink(tempFilePath);
     console.log('   ✅ Temp file deleted');
     console.log('');
@@ -112,7 +135,7 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
     console.log('✅ ========================================');
     console.log('');
 
-    // Return success response
+    // Return success response with concert info
     res.status(201).json({
       success: true,
       message: 'Video uploaded successfully!',
@@ -145,7 +168,21 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
           height: metadata.height,
         },
       },
+      concert: concertDetectionResult?.match ? {
+        id: concertDetectionResult.match.concertId,
+        artistId: concertDetectionResult.match.artistId,
+        artistName: concertDetectionResult.match.details.artistName,
+        venueId: concertDetectionResult.match.venueId,
+        venueName: concertDetectionResult.match.details.venueName,
+        venueCity: concertDetectionResult.match.details.venueCity,
+        date: concertDetectionResult.match.details.concertDate,
+        tourName: concertDetectionResult.match.details.tourName,
+        confidence: concertDetectionResult.match.confidence,
+        distance: concertDetectionResult.match.details.distance,
+        daysDifference: concertDetectionResult.match.details.daysDifference
+      } : null,
     });
+
   } catch (error) {
     console.error('');
     console.error('❌ ========================================');
