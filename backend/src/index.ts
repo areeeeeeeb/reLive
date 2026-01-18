@@ -3,6 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import pool, { testConnection } from './config/database';
 import videosRouter from './routes/videos';
+import manualSelectionRouter from './routes/manualSelection';
+import concertsRouter from './routes/concerts';
+import usersRouter from './routes/users';
 
 dotenv.config();
 
@@ -64,22 +67,65 @@ app.get('/health/tables', async (req, res) => {
   }
 });
 
-// ✅ API ROUTES - MAIN API ROUTES
+// ============================================================================
+// API ROUTES
+// ============================================================================
+
+// Video routes - Upload and CRUD
 app.use('/api/videos', videosRouter);
 
-// ✅ 404 HANDLER - MUST BE LAST
+// Concert routes - List, details, videos
+app.use('/api/concerts', concertsRouter);
+
+// User routes - Profile, home, search
+app.use('/api/users', usersRouter);
+
+// Manual selection routes - Concert/song linking and updates
+// Note: This router has endpoints for /api/concerts, /api/songs, and /api/videos
+// It's mounted AFTER concertsRouter so it doesn't conflict
+app.use('/api/concerts', manualSelectionRouter);  // Adds: POST /:id/link-video
+app.use('/api/songs', manualSelectionRouter);      // Adds: POST /link-video, GET /concert/:id
+app.use('/api/videos', manualSelectionRouter);     // Adds: PATCH /:id/concert, PATCH /:id/song
+
+// ============================================================================
+// 404 HANDLER - MUST BE LAST
+// ============================================================================
 app.use((req, res) => {
   res.status(404).json({ 
     error: 'Not found',
     message: `Route ${req.method} ${req.path} not found`,
     availableEndpoints: [
+      // Health checks
       'GET /health',
       'GET /health/db', 
       'GET /health/tables',
+      
+      // Video endpoints
       'POST /api/videos/upload',
       'GET /api/videos',
       'GET /api/videos/:id',
-      'DELETE /api/videos/:id'
+      'DELETE /api/videos/:id',
+      'PATCH /api/videos/:id/concert',
+      'PATCH /api/videos/:id/song',
+      
+      // Concert endpoints
+      'GET /api/concerts',
+      'GET /api/concerts/search',
+      'GET /api/concerts/calendar',
+      'GET /api/concerts/:id',
+      'GET /api/concerts/:id/videos',
+      'GET /api/concerts/:id/page',
+      'POST /api/concerts/:id/link-video',
+      
+      // Song endpoints
+      'POST /api/songs/link-video',
+      'GET /api/songs/concert/:concertId',
+      
+      // User endpoints
+      'GET /api/users/search',
+      'GET /api/users/:userId/profile',
+      'GET /api/users/:userId/home',
+      'GET /api/users/:userId/videos',
     ]
   });
 });
@@ -90,7 +136,18 @@ app.listen(PORT, async () => {
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`🗄️  Database check: http://localhost:${PORT}/health/db`);
   console.log(`📋 Tables check: http://localhost:${PORT}/health/tables`);
-  console.log(`🎥 Upload video: POST http://localhost:${PORT}/api/videos/upload`);
+  console.log('');
+  console.log('📹 VIDEO ENDPOINTS:');
+  console.log(`   POST http://localhost:${PORT}/api/videos/upload`);
+  console.log(`   GET  http://localhost:${PORT}/api/videos`);
+  console.log('');
+  console.log('🎸 CONCERT ENDPOINTS:');
+  console.log(`   GET  http://localhost:${PORT}/api/concerts`);
+  console.log(`   GET  http://localhost:${PORT}/api/concerts/:id/videos`);
+  console.log('');
+  console.log('👤 USER ENDPOINTS:');
+  console.log(`   GET  http://localhost:${PORT}/api/users/:userId/profile`);
+  console.log(`   GET  http://localhost:${PORT}/api/users/:userId/home`);
   console.log('');
   
   await testConnection();

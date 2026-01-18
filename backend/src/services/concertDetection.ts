@@ -28,9 +28,9 @@ interface ConcertMatch {
   artistId: number;
   venueId: number;
   setlistfmId: string;
-  confidence: 'high' | 'medium' | 'low';
-  setlistFetched: boolean; // NEW: Track if setlist was fetched
-  songsCount: number; // NEW: Number of songs in setlist
+  confidence: 'high' | 'medium' | 'low' | 'none';
+  setlistFetched: boolean;
+  songsCount: number;
   details: {
     artistName: string;
     venueName: string;
@@ -47,6 +47,7 @@ interface ConcertMatch {
 interface DetectionResult {
   success: boolean;
   match: ConcertMatch | null;
+  alternativeMatches?: ConcertMatch[]; // NEW: For medium confidence
   message: string;
 }
 
@@ -94,36 +95,71 @@ function getTimezoneForLocation(city?: string, state?: string, country?: string)
   return 'America/Toronto';
 }
 
+/**
+ * 🔧 FIXED: Calculate days difference in LOCAL timezone
+ * This fixes the issue where concerts on the same calendar day 
+ * were showing as different days due to UTC comparison
+ */
 function calculateDaysDifference(
   videoDateUTC: Date,
   concertDateUTC: Date,
   timezone: string
 ): number {
-  const videoDateLocal = new Date(videoDateUTC.toLocaleString('en-US', { timeZone: timezone }));
-  const concertDateLocal = new Date(concertDateUTC.toLocaleString('en-US', { timeZone: timezone }));
+  // Convert to local timezone strings for accurate date comparison
+  const videoLocalStr = videoDateUTC.toLocaleString('en-US', { 
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
   
-  const videoDay = new Date(videoDateLocal.getFullYear(), videoDateLocal.getMonth(), videoDateLocal.getDate());
-  const concertDay = new Date(concertDateLocal.getFullYear(), concertDateLocal.getMonth(), concertDateLocal.getDate());
+  const concertLocalStr = concertDateUTC.toLocaleString('en-US', { 
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
   
-  const diffTime = Math.abs(concertDay.getTime() - videoDay.getTime());
+  // Parse back to Date objects (now as midnight in the local timezone)
+  const videoLocalDate = new Date(videoLocalStr);
+  const concertLocalDate = new Date(concertLocalStr);
+  
+  // Calculate difference in days
+  const diffTime = Math.abs(concertLocalDate.getTime() - videoLocalDate.getTime());
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   
   return diffDays;
 }
 
+/**
+ * 🔧 IMPROVED: Better confidence thresholds
+ * High confidence: Same day + very close OR next day + exact location
+ * Medium confidence: Within 1-2 days + reasonable distance
+ * Low confidence: Everything else
+ */
 function calculateConfidence(
   distanceKm: number,
   daysDifference: number
-): 'high' | 'medium' | 'low' {
-  if (daysDifference === 0 && distanceKm < 5) return 'high';
-  if (daysDifference <= 1 && distanceKm < 2) return 'high';
-  if (daysDifference <= 3 && distanceKm < 5) return 'medium';
-  if (daysDifference <= 5 && distanceKm < 2) return 'medium';
-  return 'low';
+): 'high' | 'medium' | 'low' | 'none' {
+  // HIGH CONFIDENCE: Very likely correct
+  if (daysDifference === 0 && distanceKm < 0.5) return 'high'; // Same day, same venue
+  if (daysDifference === 0 && distanceKm < 2) return 'high';   // Same day, nearby
+  if (daysDifference === 1 && distanceKm < 0.1) return 'high'; // Adjacent day, exact location
+  
+  // MEDIUM CONFIDENCE: Probable but needs confirmation
+  if (daysDifference === 0 && distanceKm < 5) return 'medium'; // Same day, reasonable distance
+  if (daysDifference === 1 && distanceKm < 2) return 'medium'; // Adjacent day, nearby
+  if (daysDifference === 2 && distanceKm < 1) return 'medium'; // 2 days, very close
+  
+  // LOW CONFIDENCE: Possible but uncertain
+  if (daysDifference <= 3 && distanceKm < 5) return 'low';
+  if (daysDifference <= 5 && distanceKm < 2) return 'low';
+  
+  return 'none';
 }
 
 // ============================================================================
-// SETLIST FETCHING (NEW)
+// SETLIST FETCHING
 // ============================================================================
 
 /**
@@ -219,6 +255,7 @@ export async function detectConcert(
     
     console.log(`   🌍 UTC time: ${recordedDateUTC.toISOString()}`);
     console.log(`   🌍 Local time: ${recordedDateLocal.toLocaleString()}`);
+    console.log(`   🕐 Timezone: ${timezone}`);
 
     const concerts = await setlistfmApi.searchByCityAndDate(
       metadata.locationCity,
@@ -264,21 +301,21 @@ export async function detectConcert(
           confidence,
         };
       })
-      .filter((m) => m.distance < 10 && m.daysDifference <= 5)
+      .filter((m) => m.confidence !== 'none') // Only keep matches with some confidence
       .sort((a, b) => {
-        const confidenceOrder = { high: 0, medium: 1, low: 2 };
+        const confidenceOrder = { high: 0, medium: 1, low: 2, none: 3 };
         const confidenceDiff = confidenceOrder[a.confidence] - confidenceOrder[b.confidence];
         if (confidenceDiff !== 0) return confidenceDiff;
         return a.distance - b.distance;
       });
 
     if (matches.length === 0) {
-      console.log('   ✗ No concerts within 10km and ±5 days of video');
+      console.log('   ✗ No concerts match confidence criteria');
       console.log('');
       return {
         success: false,
         match: null,
-        message: 'No concerts found within 10km and ±5 days of video location/date',
+        message: 'No concerts found within reasonable distance and time range',
       };
     }
 
@@ -288,45 +325,120 @@ export async function detectConcert(
     console.log(`      Confidence: ${bestMatch.confidence}`);
     console.log('');
 
-    console.log('3️⃣  STEP 3: Creating database records...');
-    const concertMatch = await createConcertRecords(
-      bestMatch.concert,
-      metadata,
-      bestMatch.distance,
-      bestMatch.daysDifference,
-      bestMatch.confidence
-    );
-    console.log('');
+    // For HIGH confidence: Auto-link
+    // For MEDIUM confidence: Return alternatives for user to confirm
+    // For LOW confidence: Don't auto-link, but show as option
+    
+    if (bestMatch.confidence === 'high') {
+      console.log('3️⃣  STEP 3: Creating database records (HIGH CONFIDENCE)...');
+      const concertMatch = await createConcertRecords(
+        bestMatch.concert,
+        metadata,
+        bestMatch.distance,
+        bestMatch.daysDifference,
+        bestMatch.confidence
+      );
+      console.log('');
 
-    // NEW: STEP 4 - Fetch and store setlist
-    console.log('4️⃣  STEP 4: Fetching setlist...');
-    const songsCount = await fetchAndStoreSetlist(
-      concertMatch.concertId,
-      bestMatch.concert.setlistId
-    );
-    console.log('');
+      console.log('4️⃣  STEP 4: Fetching setlist...');
+      const songsCount = await fetchAndStoreSetlist(
+        concertMatch.concertId,
+        bestMatch.concert.setlistId
+      );
+      console.log('');
 
-    console.log('✅ ========================================');
-    console.log('   CONCERT DETECTION COMPLETE!');
-    console.log('✅ ========================================');
-    console.log(`   🎸 Artist: ${concertMatch.details.artistName}`);
-    console.log(`   📍 Venue: ${concertMatch.details.venueName}`);
-    console.log(`   📅 Date: ${new Date(concertMatch.details.concertDate).toDateString()}`);
-    console.log(`   📏 Distance: ${concertMatch.details.distance?.toFixed(2)}km`);
-    console.log(`   📆 Days diff: ${concertMatch.details.daysDifference} day(s)`);
-    console.log(`   🎯 Confidence: ${concertMatch.confidence}`);
-    console.log(`   📋 Songs in setlist: ${songsCount}`);
-    console.log('');
+      console.log('✅ ========================================');
+      console.log('   CONCERT DETECTION COMPLETE!');
+      console.log('✅ ========================================');
+      console.log(`   🎸 Artist: ${concertMatch.details.artistName}`);
+      console.log(`   📍 Venue: ${concertMatch.details.venueName}`);
+      console.log(`   📅 Date: ${new Date(concertMatch.details.concertDate).toDateString()}`);
+      console.log(`   📏 Distance: ${concertMatch.details.distance?.toFixed(2)}km`);
+      console.log(`   📆 Days diff: ${concertMatch.details.daysDifference} day(s)`);
+      console.log(`   🎯 Confidence: ${concertMatch.confidence}`);
+      console.log(`   📋 Songs in setlist: ${songsCount}`);
+      console.log('');
 
-    return {
-      success: true,
-      match: {
-        ...concertMatch,
-        setlistFetched: songsCount > 0,
-        songsCount,
-      },
-      message: 'Concert detected successfully',
-    };
+      return {
+        success: true,
+        match: {
+          ...concertMatch,
+          setlistFetched: songsCount > 0,
+          songsCount,
+        },
+        message: 'Concert detected with high confidence',
+      };
+    } else {
+      // MEDIUM or LOW confidence: Don't auto-link, return options
+      console.log(`3️⃣  STEP 3: ${bestMatch.confidence.toUpperCase()} confidence - returning matches for user confirmation...`);
+      
+      // Get top 3 matches for user to choose from
+      const topMatches = matches.slice(0, 3);
+      const alternativeMatches: ConcertMatch[] = [];
+      
+      for (const match of topMatches) {
+        const artist = await findOrCreateArtist({
+          name: match.concert.artist.name,
+          spotifyId: undefined,
+        });
+
+        const venue = await findOrCreateVenue({
+          name: match.concert.venue.name,
+          city: match.concert.venue.city,
+          state: match.concert.venue.state,
+          country: match.concert.venue.country,
+          latitude: match.concert.venue.latitude,
+          longitude: match.concert.venue.longitude,
+        });
+
+        const concert = await findOrCreateConcert({
+          artistId: artist.id,
+          venueId: venue.id,
+          concertDate: match.concert.date,
+          tourName: match.concert.tourName,
+          setlistfmId: match.concert.setlistId,
+        });
+        
+        // Fetch setlist for each option
+        const songsCount = await fetchAndStoreSetlist(concert.id, match.concert.setlistId);
+
+        alternativeMatches.push({
+          concertId: concert.id,
+          artistId: artist.id,
+          venueId: venue.id,
+          setlistfmId: match.concert.setlistId,
+          confidence: match.confidence,
+          setlistFetched: songsCount > 0,
+          songsCount,
+          details: {
+            artistName: artist.name,
+            venueName: venue.name,
+            venueCity: venue.city,
+            venueState: venue.state,
+            venueCountry: venue.country,
+            concertDate: concert.concert_date,
+            tourName: concert.tour_name,
+            distance: match.distance,
+            daysDifference: match.daysDifference,
+          },
+        });
+      }
+      
+      console.log('');
+      console.log('⚠️  ========================================');
+      console.log('   CONCERT DETECTION - USER INPUT NEEDED');
+      console.log('⚠️  ========================================');
+      console.log(`   Found ${alternativeMatches.length} possible matches`);
+      console.log(`   User should confirm which concert they attended`);
+      console.log('');
+
+      return {
+        success: false, // Don't auto-link
+        match: null,
+        alternativeMatches,
+        message: `Found ${alternativeMatches.length} possible concerts. User confirmation needed.`,
+      };
+    }
   } catch (error) {
     console.error('');
     console.error('❌ ========================================');
@@ -352,7 +464,7 @@ async function createConcertRecords(
   videoMetadata: VideoMetadata,
   distance: number,
   daysDifference: number,
-  confidence: 'high' | 'medium' | 'low'
+  confidence: 'high' | 'medium' | 'low' | 'none'
 ): Promise<ConcertMatch> {
   console.log(`   🎤 Processing artist: ${concertData.artist.name}...`);
   const artist = await findOrCreateArtist({
