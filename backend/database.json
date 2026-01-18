@@ -1,0 +1,6 @@
+{
+  "migrations-table": "pgmigrations",
+  "ssl": {
+    "rejectUnauthorized": false
+  }
+}
