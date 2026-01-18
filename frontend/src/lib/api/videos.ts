@@ -15,36 +15,52 @@ export interface VideoMetadata {
 }
 
 export interface UploadVideoResponse {
+  success: boolean;
+  message: string;
   video: {
     id: number;
-    user_id: number;
-    concert_id: number | null;
     title: string;
-    description: string;
-    video_url: string;
-    video_key: string;
-    thumbnail_url: string | null;
-    duration_seconds: number;
-    recorded_at: string | null;
-    latitude: string | null;
-    longitude: string | null;
-    width: number;
-    height: number;
-    device_make: string | null;
-    device_model: string | null;
-    location_city: string | null;
-    location_state: string | null;
-    location_country: string | null;
-    created_at: string;
-    updated_at: string;
+    videoUrl: string;
+    duration: number;
+    recordedAt: string | null;
+    songId: number | null;
+    createdAt: string;
+  };
+  metadata?: {
+    hasGPS: boolean;
+    hasTimestamp: boolean;
+    latitude?: number;
+    longitude?: number;
+    location?: {
+      city: string;
+      state: string;
+      country: string;
+    };
+    device?: {
+      make: string;
+      model: string;
+    };
+    dimensions?: {
+      width: number;
+      height: number;
+    };
   };
   concert?: {
     id: number;
-    artist_name: string;
-    venue_name: string;
-    venue_city: string;
-    concert_date: string;
+    artistId: number;
+    artistName: string;
+    venueId: number;
+    venueName: string;
+    venueCity: string;
+    date: string;
+    tourName: string | null;
+    setlistFetched: boolean;
+    songsCount: number;
+    confidence: string;
+    daysDifference: number;
+    distance: number;
   };
+  song?: any;
 }
 
 /**
