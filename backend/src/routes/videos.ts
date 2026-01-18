@@ -205,7 +205,9 @@ router.post('/upload', upload.single('video'), async (req: Request, res: Respons
         tourName: concertDetectionResult.match.details.tourName,
         confidence: concertDetectionResult.match.confidence,
         distance: concertDetectionResult.match.details.distance,
-        daysDifference: concertDetectionResult.match.details.daysDifference
+        daysDifference: concertDetectionResult.match.details.daysDifference,
+        setlistFetched: concertDetectionResult.match.setlistFetched,
+        songsCount: concertDetectionResult.match.songsCount
       } : null,
       song: songMatchResult?.success ? {
         id: songMatchResult.songId,
