@@ -14,5 +14,3 @@ README.md
 coverage
 .nyc_output
 *.log
-Dockerfile
-.dockerignore
