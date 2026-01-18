@@ -131,6 +131,7 @@ app.use((req, res) => {
       'GET /health',
       'GET /health/db', 
       'GET /health/tables',
+        'GET /health/system',
       
       // Video endpoints
       'POST /api/videos/upload',
