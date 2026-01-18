@@ -5,8 +5,8 @@ import {
   findOrCreateConcert,
   linkVideoToConcert,
   createAttendeeRecord,
-  getConcertDetails,
 } from './concertDatabase';
+import pool from '../config/database';
 
 // ============================================================================
 // TYPES
@@ -29,6 +29,8 @@ interface ConcertMatch {
   venueId: number;
   setlistfmId: string;
   confidence: 'high' | 'medium' | 'low';
+  setlistFetched: boolean; // NEW: Track if setlist was fetched
+  songsCount: number; // NEW: Number of songs in setlist
   details: {
     artistName: string;
     venueName: string;
@@ -37,8 +39,8 @@ interface ConcertMatch {
     venueCountry: string;
     concertDate: string;
     tourName?: string;
-    distance?: number; // km from video GPS to venue
-    daysDifference?: number; // days between video and concert
+    distance?: number;
+    daysDifference?: number;
   };
 }
 
@@ -52,17 +54,13 @@ interface DetectionResult {
 // UTILITIES
 // ============================================================================
 
-/**
- * Calculate distance between two GPS coordinates using Haversine formula
- * Returns distance in kilometers
- */
 function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371; // Earth's radius in kilometers
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
 
@@ -77,100 +75,113 @@ function calculateDistance(
   return R * c;
 }
 
-/**
- * Get timezone for a location
- * Simplified version - covers major North American cities
- */
 function getTimezoneForLocation(city?: string, state?: string, country?: string): string {
   if (country === 'Canada' || country === 'United States') {
-    // Eastern Time
     if (state === 'Ontario' || city === 'Toronto') return 'America/Toronto';
     if (state === 'Quebec' || city === 'Montreal') return 'America/Montreal';
     if (state === 'New York' || city === 'New York') return 'America/New_York';
-    
-    // Central Time
     if (state === 'Manitoba' || city === 'Winnipeg') return 'America/Winnipeg';
     if (state === 'Illinois' || city === 'Chicago') return 'America/Chicago';
-    
-    // Mountain Time
     if (state === 'Alberta' || city === 'Calgary') return 'America/Edmonton';
     if (state === 'Colorado' || city === 'Denver') return 'America/Denver';
-    
-    // Pacific Time
     if (state === 'British Columbia' || city === 'Vancouver') return 'America/Vancouver';
     if (state === 'California' || city === 'Los Angeles') return 'America/Los_Angeles';
   }
   
-  // Default to Toronto for Canada, New York for US
   if (country === 'Canada') return 'America/Toronto';
   if (country === 'United States') return 'America/New_York';
   
-  return 'America/Toronto'; // Fallback
+  return 'America/Toronto';
 }
 
-/**
- * Calculate the absolute difference in calendar days between two dates
- * Uses LOCAL timezone to compare calendar dates, not UTC timestamps
- * 
- * Example:
- * - Video: Sept 19, 11 PM local → Sept 20, 3 AM UTC
- * - Concert: Sept 19, 8 PM local → Sept 20, 12 AM UTC  
- * - Days difference: 0 (same calendar day locally)
- */
 function calculateDaysDifference(
   videoDateUTC: Date,
   concertDateUTC: Date,
   timezone: string
 ): number {
-  // Convert both dates to local timezone
   const videoDateLocal = new Date(videoDateUTC.toLocaleString('en-US', { timeZone: timezone }));
   const concertDateLocal = new Date(concertDateUTC.toLocaleString('en-US', { timeZone: timezone }));
   
-  // Get just the calendar dates (ignore time)
   const videoDay = new Date(videoDateLocal.getFullYear(), videoDateLocal.getMonth(), videoDateLocal.getDate());
   const concertDay = new Date(concertDateLocal.getFullYear(), concertDateLocal.getMonth(), concertDateLocal.getDate());
   
-  // Calculate difference in days
   const diffTime = Math.abs(concertDay.getTime() - videoDay.getTime());
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   
   return diffDays;
 }
 
-/**
- * Determine confidence level based on distance and date proximity
- */
 function calculateConfidence(
   distanceKm: number,
   daysDifference: number
 ): 'high' | 'medium' | 'low' {
-  // HIGH CONFIDENCE
-  if (daysDifference === 0 && distanceKm < 5) {
-    return 'high';
-  }
-  if (daysDifference <= 1 && distanceKm < 2) {
-    return 'high';
-  }
-
-  // MEDIUM CONFIDENCE
-  if (daysDifference <= 3 && distanceKm < 5) {
-    return 'medium';
-  }
-  if (daysDifference <= 5 && distanceKm < 2) {
-    return 'medium';
-  }
-
-  // LOW CONFIDENCE
+  if (daysDifference === 0 && distanceKm < 5) return 'high';
+  if (daysDifference <= 1 && distanceKm < 2) return 'high';
+  if (daysDifference <= 3 && distanceKm < 5) return 'medium';
+  if (daysDifference <= 5 && distanceKm < 2) return 'medium';
   return 'low';
+}
+
+// ============================================================================
+// SETLIST FETCHING (NEW)
+// ============================================================================
+
+/**
+ * Fetch and store setlist from Setlist.fm
+ */
+async function fetchAndStoreSetlist(concertId: number, setlistfmId: string): Promise<number> {
+  try {
+    console.log('📋 Fetching setlist from Setlist.fm...');
+    
+    // Check if setlist already exists
+    const existingCheck = await pool.query(
+      'SELECT COUNT(*) as count FROM songs WHERE concert_id = $1 AND source = $2',
+      [concertId, 'setlistfm']
+    );
+    
+    if (parseInt(existingCheck.rows[0].count) > 0) {
+      console.log('   ✓ Setlist already cached in database');
+      return parseInt(existingCheck.rows[0].count);
+    }
+    
+    // Fetch from Setlist.fm
+    const setlistData = await setlistfmApi.getSetlistById(setlistfmId);
+    
+    if (!setlistData || !setlistData.songs || setlistData.songs.length === 0) {
+      console.log('   ℹ️  No setlist available on Setlist.fm');
+      return 0;
+    }
+    
+    console.log(`   ✓ Found ${setlistData.songs.length} songs`);
+    console.log('   💾 Storing songs in database...');
+    
+    // Store each song
+    let storedCount = 0;
+    for (let i = 0; i < setlistData.songs.length; i++) {
+      const songTitle = setlistData.songs[i];
+      
+      await pool.query(
+        `INSERT INTO songs (concert_id, title, order_in_setlist, source)
+         VALUES ($1, $2, $3, $4)`,
+        [concertId, songTitle, i + 1, 'setlistfm']
+      );
+      
+      storedCount++;
+    }
+    
+    console.log(`   ✅ Stored ${storedCount} songs from setlist`);
+    return storedCount;
+    
+  } catch (error) {
+    console.error('   ⚠️  Failed to fetch setlist:', error);
+    return 0;
+  }
 }
 
 // ============================================================================
 // MAIN DETECTION FUNCTION
 // ============================================================================
 
-/**
- * Main concert detection function
- */
 export async function detectConcert(
   metadata: VideoMetadata
 ): Promise<DetectionResult> {
@@ -186,7 +197,6 @@ export async function detectConcert(
     console.log(`   🌍 Location: ${metadata.locationCity}, ${metadata.locationState}, ${metadata.locationCountry}`);
     console.log('');
 
-    // STEP 1: Validate inputs
     if (!metadata.locationCity) {
       return {
         success: false,
@@ -195,18 +205,14 @@ export async function detectConcert(
       };
     }
 
-    // Get timezone for this location
     const timezone = getTimezoneForLocation(
       metadata.locationCity,
       metadata.locationState,
       metadata.locationCountry
     );
 
-    // STEP 2: Search Setlist.fm
     console.log('1️⃣  STEP 1: Searching Setlist.fm...');
     const recordedDateUTC = new Date(metadata.recordedAt);
-    
-    // Convert to local time for search
     const recordedDateLocal = new Date(recordedDateUTC.toLocaleString('en-US', {
       timeZone: timezone
     }));
@@ -232,7 +238,6 @@ export async function detectConcert(
     console.log(`   ✓ Found ${concerts.length} concert(s) in ${metadata.locationCity}`);
     console.log('');
 
-    // STEP 3: Filter and find best match
     console.log('2️⃣  STEP 2: Filtering by distance and date proximity...');
     const matches = concerts
       .map((concert) => {
@@ -261,7 +266,6 @@ export async function detectConcert(
       })
       .filter((m) => m.distance < 10 && m.daysDifference <= 5)
       .sort((a, b) => {
-        // Sort by confidence first, then distance
         const confidenceOrder = { high: 0, medium: 1, low: 2 };
         const confidenceDiff = confidenceOrder[a.confidence] - confidenceOrder[b.confidence];
         if (confidenceDiff !== 0) return confidenceDiff;
@@ -278,14 +282,12 @@ export async function detectConcert(
       };
     }
 
-    // Take the best match
     const bestMatch = matches[0];
     console.log(`   ✓ Best match: ${bestMatch.concert.artist.name}`);
     console.log(`      ${bestMatch.distance.toFixed(2)}km away, ${bestMatch.daysDifference} day(s) difference`);
     console.log(`      Confidence: ${bestMatch.confidence}`);
     console.log('');
 
-    // STEP 4: Create database records
     console.log('3️⃣  STEP 3: Creating database records...');
     const concertMatch = await createConcertRecords(
       bestMatch.concert,
@@ -296,7 +298,14 @@ export async function detectConcert(
     );
     console.log('');
 
-    // STEP 5: Success
+    // NEW: STEP 4 - Fetch and store setlist
+    console.log('4️⃣  STEP 4: Fetching setlist...');
+    const songsCount = await fetchAndStoreSetlist(
+      concertMatch.concertId,
+      bestMatch.concert.setlistId
+    );
+    console.log('');
+
     console.log('✅ ========================================');
     console.log('   CONCERT DETECTION COMPLETE!');
     console.log('✅ ========================================');
@@ -306,11 +315,16 @@ export async function detectConcert(
     console.log(`   📏 Distance: ${concertMatch.details.distance?.toFixed(2)}km`);
     console.log(`   📆 Days diff: ${concertMatch.details.daysDifference} day(s)`);
     console.log(`   🎯 Confidence: ${concertMatch.confidence}`);
+    console.log(`   📋 Songs in setlist: ${songsCount}`);
     console.log('');
 
     return {
       success: true,
-      match: concertMatch,
+      match: {
+        ...concertMatch,
+        setlistFetched: songsCount > 0,
+        songsCount,
+      },
       message: 'Concert detected successfully',
     };
   } catch (error) {
@@ -377,6 +391,8 @@ async function createConcertRecords(
     venueId: venue.id,
     setlistfmId: concertData.setlistId,
     confidence,
+    setlistFetched: false, // Will be updated in main function
+    songsCount: 0, // Will be updated in main function
     details: {
       artistName: artist.name,
       venueName: venue.name,
@@ -390,9 +406,5 @@ async function createConcertRecords(
     },
   };
 }
-
-// ============================================================================
-// EXPORTS
-// ============================================================================
 
 export type { VideoMetadata, ConcertMatch, DetectionResult };
