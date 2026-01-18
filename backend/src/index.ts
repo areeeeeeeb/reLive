@@ -72,6 +72,33 @@ app.get('/health/tables', async (req, res) => {
   }
 });
 
+app.get('/health/system', async (req, res) => {
+  const { exec } = require('child_process');
+  const { promisify } = require('util');
+  const execPromise = promisify(exec);
+  
+  const checks: any = {
+    ffmpeg: { installed: false, error: '' },
+    ffprobe: { installed: false, error: '' }
+  };
+
+  try {
+    await execPromise('ffmpeg -version');
+    checks.ffmpeg.installed = true;
+  } catch (error) {
+    checks.ffmpeg.error = 'Not found';
+  }
+
+  try {
+    await execPromise('ffprobe -version');
+    checks.ffprobe.installed = true;
+  } catch (error) {
+    checks.ffprobe.error = 'Not found';
+  }
+
+  res.json(checks);
+});
+
 // ============================================================================
 // API ROUTES
 // ============================================================================
