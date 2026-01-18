@@ -144,3 +144,15 @@ export const getUserVideos = async (userId: number) => {
   const response = await apiClient.get(API_ENDPOINTS.userVideos(userId));
   return response.data;
 };
+
+/**
+ * Link video to a song
+ * Either provide songId (existing song) OR songTitle+concertId (create new)
+ */
+export const updateVideoSong = async (videoId: number, songId: number) => {
+  const response = await apiClient.post('/api/songs/link-video', {
+    videoId,
+    songId
+  });
+  return response.data;
+};

@@ -109,3 +109,19 @@ export const getConcertPage = async (concertId: number): Promise<ConcertPageResp
   );
   return response.data;
 };
+
+export interface ConcertSetlistResponse {
+  concertId: number;
+  count: number;
+  songs: Song[];
+}
+
+/**
+ * Fetch concert setlist
+ */
+export const getConcertSetlist = async (concertId: number): Promise<Song[]> => {
+  const response = await apiClient.get<ConcertSetlistResponse>(
+    API_ENDPOINTS.concertSetlist(concertId)
+  );
+  return response.data.songs;
+};
