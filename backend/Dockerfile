@@ -1,14 +1,14 @@
-# Use Node.js 18 LTS with Debian
-FROM node:18-bullseye
+# Use Node.js 20 LTS with Alpine
+FROM node:20-alpine
 
-# Install ffmpeg and clean up to reduce image size
-RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
+# Install ffmpeg for Alpine Linux
+RUN apk add --no-cache ffmpeg
 
 # Create temp directories for video processing
 RUN mkdir -p /tmp/uploads /tmp/audio && \
     chmod 777 /tmp/uploads /tmp/audio
+
+# ... rest stays the same
 
 # Set working directory
 WORKDIR /app
