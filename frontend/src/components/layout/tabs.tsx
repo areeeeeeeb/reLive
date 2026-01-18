@@ -157,7 +157,7 @@ const Tabs: React.FC = () => {
               strokeWidth={isRouteActive(href) ? 2 : 2}
               weight={important ? 'fill' : 'regular'}
               className={
-                isRouteActive(href) ? 'text-white' : important ? 'text-neutral-500 hover:text-white' : 'text-neutral-500'
+                isRouteActive(href) ? 'text-white' : important ? 'text-chartreuse hover:text-chartreuse/80' : 'text-neutral-500'
               }
             />
           </IonTabButton>

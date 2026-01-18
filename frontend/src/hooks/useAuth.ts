@@ -19,6 +19,7 @@ export const useAuth = () => {
     if (Capacitor.isNativePlatform()) {
       // On native platforms, use Capacitor's Browser plugin
       await loginWithRedirect({
+        appState: { returnTo: '/profile' },
         async openUrl(url) {
           await Browser.open({
             url,
@@ -28,7 +29,9 @@ export const useAuth = () => {
       });
     } else {
       // On web, use default behavior (window redirect)
-      await loginWithRedirect();
+      await loginWithRedirect({
+        appState: { returnTo: '/profile' }
+      });
     }
   };
 
