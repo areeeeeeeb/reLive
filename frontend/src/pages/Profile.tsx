@@ -88,10 +88,6 @@ const UserProfile: React.FC = () => {
               <Music className='text-zinc-400 size-5' />
               <div>{homeData.platformStats.total_artists} Artists</div>
             </div>
-            <div className='flex gap-1'>
-              <Users className='text-zinc-400 size-5' />
-              <div>{homeData.platformStats.total_users} Users</div>
-            </div>
           </div>
         )}
 
