@@ -58,9 +58,26 @@ export const useAuth = () => {
     }
   };
 
+  const getUserId = (): number | null => {
+    if (!rest.user?.sub) {
+      return null;
+    }
+
+    // Auth0 user.sub format is typically "auth0|123" or "google-oauth2|456"
+    // Extract the numeric ID after the pipe
+    const parts = rest.user.sub.split('|');
+    if (parts.length > 1) {
+      const numericId = parseInt(parts[1]);
+      return isNaN(numericId) ? null : numericId;
+    }
+
+    return null;
+  };
+
   return {
     login,
     logout,
+    getUserId,
     ...rest
   };
 };
