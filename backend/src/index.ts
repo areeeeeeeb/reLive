@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pool, { testConnection } from './config/database';
+import videosRouter from './routes/videos';
 
 dotenv.config();
 
@@ -10,9 +11,9 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '50mb' })); // For video uploads
+app.use(express.json({ limit: '50mb' }));
 
-// Basic health check
+// Health check routes
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -21,7 +22,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Database health check
 app.get('/health/db', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW() as time, version() as version');
@@ -41,8 +41,6 @@ app.get('/health/db', async (req, res) => {
   }
 });
 
-
-// Test database tables
 app.get('/health/tables', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -66,22 +64,25 @@ app.get('/health/tables', async (req, res) => {
   }
 });
 
-// 404 handler
+// ✅ API ROUTES - MAIN API ROUTES
+app.use('/api/videos', videosRouter);
+
+// ✅ 404 HANDLER - MUST BE LAST
 app.use((req, res) => {
   res.status(404).json({ 
     error: 'Not found',
+    message: `Route ${req.method} ${req.path} not found`,
     availableEndpoints: [
       'GET /health',
       'GET /health/db', 
-      'GET /health/tables'
+      'GET /health/tables',
+      'POST /api/videos/upload',
+      'GET /api/videos',
+      'GET /api/videos/:id',
+      'DELETE /api/videos/:id'
     ]
   });
 });
-
-// Routes (we'll add these next)
-// app.use('/api/videos', videosRouter);
-// app.use('/api/concerts', concertsRouter);
-// app.use('/api/users', usersRouter);
 
 // Start server
 app.listen(PORT, async () => {
@@ -89,8 +90,8 @@ app.listen(PORT, async () => {
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`🗄️  Database check: http://localhost:${PORT}/health/db`);
   console.log(`📋 Tables check: http://localhost:${PORT}/health/tables`);
+  console.log(`🎥 Upload video: POST http://localhost:${PORT}/api/videos/upload`);
   console.log('');
   
-  // Test database on startup
   await testConnection();
 });
