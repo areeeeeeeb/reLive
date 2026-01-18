@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { Route, Redirect } from 'react-router-dom';
 import Tabs from './components/layout/tabs';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -61,8 +62,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <IonApp>
-      <IonReactRouter>
+    <ThemeProvider>
+      <IonApp>
+        <IonReactRouter>
         {isAuthenticated ? (
           // protected routes - user is logged in
           <Tabs />
@@ -81,8 +83,9 @@ const App: React.FC = () => {
             </Route>
           </IonRouterOutlet>
         )}
-      </IonReactRouter>
-    </IonApp>
+        </IonReactRouter>
+      </IonApp>
+    </ThemeProvider>
   );
 };
 
