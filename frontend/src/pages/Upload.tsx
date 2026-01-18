@@ -202,23 +202,26 @@ const Upload: React.FC = () => {
             <div className="text-left w-full">
               {uploadedVideos[currentStep - 1]?.uploadResponse?.concert ? (
                 <>
-                  <p className="text-2xl font-bold">
-                    {uploadedVideos[currentStep - 1]?.uploadResponse?.concert?.artist_name}
+                  <p className="text-2xl font-bold text-white">
+                    {uploadedVideos[currentStep - 1]?.uploadResponse?.concert?.artistName}
                   </p>
                   <p className="text-lg text-chartreuse">
-                    {new Date(uploadedVideos[currentStep - 1]?.uploadResponse?.concert?.concert_date || '').toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit'
-                    })}
+                    {(() => {
+                      const concertDate = uploadedVideos[currentStep - 1]?.uploadResponse?.concert?.date;
+                      if (!concertDate) return 'Date not available';
+                      return new Date(concertDate).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      });
+                    })()}
                   </p>
                   <p className="text-md">
-                    {uploadedVideos[currentStep - 1]?.uploadResponse?.concert?.venue_name}
+                    {uploadedVideos[currentStep - 1]?.uploadResponse?.concert?.venueName}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {uploadedVideos[currentStep - 1]?.uploadResponse?.concert?.venue_city}
+                    {uploadedVideos[currentStep - 1]?.uploadResponse?.concert?.venueCity}
                   </p>
                 </>
               ) : (
