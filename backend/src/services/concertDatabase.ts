@@ -447,3 +447,46 @@ export async function getConcertsByArtist(artistId: number) {
     throw error;
   }
 }
+
+// ============================================================================
+// CONCERT THUMBNAIL OPERATIONS
+// ============================================================================
+
+/**
+ * Update concert thumbnail (only if not already set)
+ * Uses atomic PostgreSQL query to prevent race conditions
+ *
+ * @param concertId - Concert ID to update
+ * @param thumbnailUrl - CDN URL for thumbnail
+ * @param thumbnailKey - DigitalOcean Spaces storage key
+ * @returns true if thumbnail was updated, false if concert already had a thumbnail
+ */
+export async function updateConcertThumbnail(
+  concertId: number,
+  thumbnailUrl: string,
+  thumbnailKey: string
+): Promise<boolean> {
+  try {
+    // Atomically update concert thumbnail only if it doesn't already have one
+    // This prevents race conditions when multiple videos are uploaded simultaneously
+    const query = `
+      UPDATE concerts
+      SET thumbnail_url = $2, thumbnail_key = $3
+      WHERE id = $1 AND thumbnail_url IS NULL
+      RETURNING id
+    `;
+
+    const result = await pool.query(query, [concertId, thumbnailUrl, thumbnailKey]);
+
+    if (result.rowCount && result.rowCount > 0) {
+      console.log(`   ✅ Updated concert ${concertId} with thumbnail: ${thumbnailUrl}`);
+      return true;
+    } else {
+      console.log(`   ℹ️  Concert ${concertId} already has thumbnail, skipping`);
+      return false;
+    }
+  } catch (error) {
+    console.error('   ❌ Error updating concert thumbnail:', error);
+    throw error;
+  }
+}

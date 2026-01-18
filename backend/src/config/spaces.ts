@@ -209,7 +209,78 @@ export const getVideoMetadata = async (
  * @returns Public CDN URL
  */
 export const getVideoUrl = (key: string): string => {
-  const cdnBaseUrl = process.env.DO_SPACES_CDN_URL || 
+  const cdnBaseUrl = process.env.DO_SPACES_CDN_URL ||
     `${process.env.DO_SPACES_ENDPOINT}/${process.env.DO_SPACES_BUCKET}`;
   return `${cdnBaseUrl}/${key}`;
+};
+
+/**
+ * Upload thumbnail image to DigitalOcean Spaces
+ * @param filePath - Local path to thumbnail file
+ * @param options - Upload options
+ * @returns Object with URL, key, and metadata
+ */
+export const uploadThumbnail = async (
+  filePath: string,
+  options: {
+    folder?: string;
+    originalName?: string;
+  } = {}
+): Promise<{
+  url: string;
+  cdnUrl: string;
+  key: string;
+  bucket: string;
+}> => {
+  try {
+    const bucket = process.env.DO_SPACES_BUCKET!;
+    const cdnBaseUrl = process.env.DO_SPACES_CDN_URL || process.env.DO_SPACES_ENDPOINT;
+
+    // Generate unique filename
+    const fileExt = path.extname(options.originalName || filePath);
+    const uniqueId = uuidv4();
+    const fileName = `${uniqueId}${fileExt}`;
+
+    // Construct key (path in bucket)
+    const folder = options.folder || 'thumbnails/concerts';
+    const key = `${folder}/${fileName}`;
+
+    console.log(`   📤 Uploading thumbnail to DigitalOcean Spaces: ${key}`);
+
+    // Create read stream from file
+    const fileStream = createReadStream(filePath);
+
+    // Configure upload
+    const upload = new Upload({
+      client: s3Client,
+      params: {
+        Bucket: bucket,
+        Key: key,
+        Body: fileStream,
+        ACL: 'public-read', // Make thumbnail publicly accessible
+        ContentType: 'image/jpeg',
+        // Set cache control for CDN
+        CacheControl: 'public, max-age=31536000', // 1 year
+      },
+    });
+
+    // Execute upload
+    await upload.done();
+
+    // Construct URLs
+    const url = `${process.env.DO_SPACES_ENDPOINT}/${bucket}/${key}`;
+    const cdnUrl = `${cdnBaseUrl}/${key}`;
+
+    console.log(`   ✅ Thumbnail upload complete: ${cdnUrl}`);
+
+    return {
+      url,
+      cdnUrl,
+      key,
+      bucket,
+    };
+  } catch (error) {
+    console.error('   ❌ DigitalOcean Spaces thumbnail upload error:', error);
+    throw new Error(`Failed to upload thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 };
