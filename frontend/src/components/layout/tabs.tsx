@@ -1,7 +1,8 @@
 import { IonTabs, IonTabBar, IonTabButton, IonRouterOutlet } from '@ionic/react';
-import { Route, Redirect, useLocation } from 'react-router-dom';
+import { Route, Redirect, useLocation, useHistory } from 'react-router-dom';
 import { Home as HomeIcon, Search as SearchIcon, User as UserIcon, Upload as UploadIcon, Calendar as CalendarIcon } from 'lucide-react';
 import { PlusCircleIcon } from '@phosphor-icons/react';
+import { useRef } from 'react';
 import Home from '../../pages/Home';
 import Search from '../../pages/Search';
 import UserProfile from '../../pages/Profile';
@@ -11,18 +12,62 @@ import Upload from '../../pages/Upload';
 import Venue from '../../pages/Venue';
 import Artist from '../../pages/Artist';
 import { cn } from '@/lib/utils';
+import { setPendingFiles } from '@/lib/uploadQueue';
+import { Capacitor } from '@capacitor/core';
 
 const Tabs: React.FC = () => {
   const location = useLocation();
+  const history = useHistory();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Routes where tab bar should be hidden
+  const hiddenTabBarRoutes = ['/upload'];
 
   const isRouteActive = (href: string) => {
     return location.pathname === href;
   };
 
+  const shouldHideTabBar = hiddenTabBarRoutes.some(route => 
+    location.pathname === route || location.pathname.endsWith(route)
+  );
+
+  const handleUploadClick = (e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+
+    if (files && files.length > 0) {
+      // convert FileList to File array and store in upload queue
+      const fileArray = Array.from(files);
+      setPendingFiles(fileArray);
+      // navigate to upload page
+      history.push('/upload');
+    }
+    // reset the input so it can trigger onChange again for the same file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
 
   return (
-    <IonTabs>
-      <IonRouterOutlet>
+    <>
+      {/* Hidden file input for video selection */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/*"
+        multiple
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
+
+      <IonTabs className='bg-black'>
+        <IonRouterOutlet>
         {/* Tab roots */}
         <Route exact path="/home" component={Home} />
         <Route exact path="/search" component={Search} />
@@ -47,10 +92,15 @@ const Tabs: React.FC = () => {
         mode='ios'
         className={cn(
           'pb-safe transition-all! duration-100!',
-          'translate-y-0z! opacity-100! border-gray-200',
+          shouldHideTabBar
+            ? 'translate-y-full! h-0! border-0! pointer-events-none! opacity-0! [--ion-safe-area-bottom:0px]'
+            : 'translate-y-0! opacity-100!',
+          shouldHideTabBar && Capacitor.isNativePlatform()
+            ? 'hidden'
+            : '',
           'bg-black',
         )}
-                style={
+          style={
           {
             '--background': '#000000',
           } as any
@@ -97,8 +147,9 @@ const Tabs: React.FC = () => {
           <IonTabButton
             key={tab}
             tab={tab}
-            href={href}
+            href={tab === 'upload' ? undefined : href}
             disabled={disabled}
+            onClick={tab === 'upload' ? handleUploadClick : undefined}
           >
             <Icon
               size={24}
@@ -113,6 +164,7 @@ const Tabs: React.FC = () => {
         ))}
       </IonTabBar>
     </IonTabs>
+    </>
   );
 };
 

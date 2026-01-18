@@ -10,9 +10,6 @@ import Signup from './pages/Signup';
 import { Route, Redirect } from 'react-router-dom';
 import Tabs from './components/layout/tabs';
 
-// tailwind css
-import './theme/tailwind.css';
-
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
 
@@ -31,6 +28,9 @@ import '@ionic/react/css/display.css';
 
 /* Theme variables */
 import './theme/ionic.css';
+
+// tailwind css (imported last to ensure utilities override Ionic styles)
+import './theme/tailwind.css';
 
 setupIonicReact();
 
