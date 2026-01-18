@@ -1,28 +1,22 @@
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButton } from '@ionic/react';
+import { IonButton } from '@ionic/react';
 import { useAuth } from '../hooks/useAuth';
+import { PageContent } from '@/components/layout/page-content';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
 
   return (
-    <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>Login</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-      <IonContent fullscreen className="ion-padding">
+    <PageContent title='login'>
+      <div>
+        <h2>Welcome to reLive</h2>
+        <p>Sign in to continue</p>
         <div>
-          <h2>Welcome to reLive</h2>
-          <p>Sign in to continue</p>
-          <div>
-            <IonButton onClick={login}>
-              Log in
-            </IonButton>
-          </div>
+          <IonButton onClick={login}>
+            Log in
+          </IonButton>
         </div>
-      </IonContent>
-    </IonPage>
+      </div>
+    </PageContent>
   );
 };
 
