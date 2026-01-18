@@ -8,7 +8,7 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { Route, Redirect } from 'react-router-dom';
-import Tabs from './components/tabs';
+import Tabs from './components/layout/tabs';
 
 // tailwind css
 import './theme/tailwind.css';
