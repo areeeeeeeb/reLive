@@ -42,25 +42,28 @@ function Button({
   size = "default",
   asChild = false,
   onClick,
+  disabled = false,
   ...props
 }: Omit<React.ComponentProps<"div">, "onClick"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
     onClick?: (e: React.MouseEvent<HTMLDivElement>) => void
+    disabled?: boolean
   }) {
   const Comp = asChild ? Slot : "div"
 
   return (
     <Comp
       role="button"
-      tabIndex={0}
+      tabIndex={disabled ? -1 : 0}
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }), "cursor-pointer select-none")}
-      onClick={onClick}
+      aria-disabled={disabled}
+      className={cn(buttonVariants({ variant, size, className }), "cursor-pointer select-none", disabled && "pointer-events-none opacity-50")}
+      onClick={disabled ? undefined : onClick}
       onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
-        if ((e.key === 'Enter' || e.key === ' ') && onClick) {
+        if (!disabled && (e.key === 'Enter' || e.key === ' ') && onClick) {
           e.preventDefault()
           onClick(e as any)
         }
