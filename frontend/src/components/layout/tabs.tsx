@@ -2,14 +2,14 @@ import { IonTabs, IonTabBar, IonTabButton, IonRouterOutlet } from '@ionic/react'
 import { Route, Redirect, useLocation } from 'react-router-dom';
 import { Home as HomeIcon, Search as SearchIcon, User as UserIcon, Upload as UploadIcon, Calendar as CalendarIcon } from 'lucide-react';
 import { PlusCircleIcon } from '@phosphor-icons/react';
-import Home from '../pages/Home';
-import Search from '../pages/Search';
-import UserProfile from '../pages/Profile';
-import Event from '../pages/Event';
-import Watch from '../pages/Watch';
-import Upload from '../pages/Upload';
-import Venue from '../pages/Venue';
-import Artist from '../pages/Artist';
+import Home from '../../pages/Home';
+import Search from '../../pages/Search';
+import UserProfile from '../../pages/Profile';
+import Event from '../../pages/Event';
+import Watch from '../../pages/Watch';
+import Upload from '../../pages/Upload';
+import Venue from '../../pages/Venue';
+import Artist from '../../pages/Artist';
 import { cn } from '@/lib/utils';
 
 const Tabs: React.FC = () => {
