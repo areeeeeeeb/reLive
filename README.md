@@ -1,6 +1,6 @@
 <img src="https://i.imgur.com/cGzMATY.png" alt="My Image" height="100px">
 
-the source code of _reLive_, a cross-platform social platform that transforms raw concert videos into organized, immersive memories
+the source code of _reLive_, a social platform for concert lovers to log and relive shows from the crowd’s point of view
 
 ### running the project
 
