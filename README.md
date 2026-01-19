@@ -1,6 +1,6 @@
 <img src="https://i.imgur.com/cGzMATY.png" alt="My Image" height="100px">
 
-the source code of _reLive_, a social platform for concert lovers to log and relive shows from the crowd’s point of view
+the source code of _reLive_, a social platform for concert lovers to log shows and relive them from the crowd’s point of view
 
 ### running the project
 
