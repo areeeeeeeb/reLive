@@ -21,4 +21,3 @@ type UpdateProfileRequest struct {
     ProfilePicture string `json:"profile_picture"`
     Bio            string `json:"bio"`
 }
-
