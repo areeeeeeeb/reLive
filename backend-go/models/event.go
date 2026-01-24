@@ -8,7 +8,7 @@ type Event struct {
     ArtistID    int       `db:"artist_id" json:"artist_id"`
     VenueID     int       `db:"venue_id" json:"venue_id"`
     EventDate   time.Time `db:"event_date" json:"event_date"`
-    TourName    *string   `db:"tour_name" json:"tour_name"`         // Nullable  
+    TourName    *string   `db:"tour_name" json:"tour_name"`         // Nullable
     SetlistFMID *string   `db:"setlistfm_id" json:"setlistfm_id"`   // Nullable
     CreatedAt   time.Time `db:"created_at" json:"created_at"`
 }
