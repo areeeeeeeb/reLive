@@ -5,6 +5,6 @@
 *.dylib
 tmp/
 vendor/
-
+bin/
 # Environment
 .env
