@@ -1,11 +1,26 @@
 package main
 
 import (
+	"context"
+	"log"
+	
+	"github.com/areeeeeeeb/reLive/backend-go/config"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	// Create Gin router
+	ctx := context.Background()
+
+	cfg := config.Load()
+
+	pool, err := cfg.NewDBPool(ctx)
+	if err != nil {
+		log.Fatalf("Failed to connect to database %v", err)
+	}
+	defer pool.Close()
+
+
 	r := gin.Default()
 
 	// Basic health check endpoint
