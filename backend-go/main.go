@@ -30,6 +30,16 @@ func main() {
 		})
 	})
 
+	// Database health check
+	r.GET("/health/db", func(c *gin.Context) {
+		err := pool.Ping(c.Request.Context())
+		if err != nil {
+			c.JSON(500, gin.H{"status": "error", "error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok", "database": "connected"})
+	})
+
 	// API v2 route group
 	v2 := r.Group("/v2/api")
 	{
