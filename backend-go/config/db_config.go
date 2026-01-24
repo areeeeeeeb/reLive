@@ -12,14 +12,12 @@ import (
 
 
 func (c *Config) NewDBPool(ctx context.Context) (*pgxpool.Pool, error) {
-	fmt.Println("%s", c.DatabaseURL)
+	
 	parsed_db_config, err := pgxpool.ParseConfig(c.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse DATABASE_URL: %w", err)
 	}
-	fmt.Println("%v, %v", parsed_db_config, err)
 
-	
 	parsed_db_config.MaxConns = 25
 	parsed_db_config.MinConns = 5
 	parsed_db_config.MaxConnLifetime = time.Hour
