@@ -9,6 +9,8 @@ dev:
 	go run main.go
 
 # Database migrations
+# install golang-migrate with: go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
 migrate-up:
 	migrate -path migrations/ -database "${DATABASE_URL}" up
 
