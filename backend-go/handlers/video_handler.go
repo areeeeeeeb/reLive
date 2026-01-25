@@ -13,7 +13,7 @@ type VideoUploadHandler struct {
 	cdnURL   string
 }
 
-func NewUploadHandler(pool *pgxpool.Pool, s3Client *s3.Client, bucket string, cdnURL string) *VideoUploadHandler {
+func NewVideoUploadHandler(pool *pgxpool.Pool, s3Client *s3.Client, bucket string, cdnURL string) *VideoUploadHandler {
 	return &VideoUploadHandler{
 		pool:     pool,
 		s3Client: s3Client,
@@ -34,7 +34,8 @@ func (h *VideoUploadHandler) GetPresignedURL(c *gin.Context) {
 	c.JSON(501, gin.H{"error": "not implemented"})
 }
 
-// ConfirmUpload marks a video as uploaded after client confirms
+// ConfirmUpload marks a video as uploaded after the client finishes uploading bytes.
+// This is typically where you verify the object exists and kick off downstream processing.
 func (h *VideoUploadHandler) ConfirmUpload(c *gin.Context) {
 	// TODO: implement
 	// 1. Get video ID from request

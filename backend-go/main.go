@@ -22,10 +22,16 @@ func main() {
 	}
 	defer pool.Close()
 
+	s3Client, err := cfg.NewS3Client(ctx)
+	if err != nil {
+		log.Fatalf("Failed to connect to s3 %v", err)
+	}
+
 	r := gin.Default()
 
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(pool)
+	videoUploadHandler := handlers.NewVideoUploadHandler(pool, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {
@@ -57,8 +63,17 @@ func main() {
 		v2_auth := v2.Group("")
 		v2_auth.Use(middleware.AuthRequired(cfg.Auth0))
 		{
-			v2_auth.POST("/users/sync", userHandler.Sync)
-			v2_auth.POST("/users/me", userHandler.Me)
+			users := v2_auth.Group("/users")
+			{
+				users.POST("/sync", userHandler.Sync)
+				users.POST("/me", userHandler.Me)
+			}
+
+			videos := v2_auth.Group("/videos")
+			{
+				videos.POST("/:id/upload/init", videoUploadHandler.GetPresignedURL)
+				videos.POST("/:id/upload/confirm", videoUploadHandler.ConfirmUpload)
+			}
 		}
 	}
 
