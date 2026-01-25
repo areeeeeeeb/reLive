@@ -11,12 +11,22 @@ type Config struct {
 	Environment string
 	DatabaseURL string
 
-	Auth0 Auth0Config
+	Auth0  Auth0Config
+	Spaces SpacesConfig
 }
 
 type Auth0Config struct {
 	Domain   string
 	Audience string
+}
+
+type SpacesConfig struct {
+	Endpoint  string
+	Bucket    string
+	Region    string
+	AccessKey string
+	SecretKey string
+	CdnURL    string
 }
 
 func Load() *Config {
@@ -30,6 +40,15 @@ func Load() *Config {
 		Auth0: Auth0Config{
 			getEnv("Auth0_Domain", ""),
 			getEnv("Auth0_Audience", ""),
+		},
+
+		Spaces: SpacesConfig{
+			Endpoint:  getEnv("DO_SPACES_ENDPOINT", ""),
+			Bucket:    getEnv("DO_SPACES_BUCKET", ""),
+			Region:    getEnv("DO_SPACES_REGION", ""),
+			AccessKey: getEnv("DO_SPACES_KEY", ""),
+			SecretKey: getEnv("DO_SPACES_SECRET", ""),
+			CdnURL:    getEnv("DO_SPACES_CDN_URL", ""),
 		},
 	}
 }
