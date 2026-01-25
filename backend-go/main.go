@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"log"
-	
+
 	"github.com/areeeeeeeb/reLive/backend-go/config"
+	"github.com/areeeeeeeb/reLive/backend-go/handlers"
+	"github.com/areeeeeeeb/reLive/backend-go/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,8 +22,10 @@ func main() {
 	}
 	defer pool.Close()
 
-
 	r := gin.Default()
+
+	// add handler structs here
+	userHandler := handlers.NewUserHandler(pool)
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {
@@ -49,6 +53,13 @@ func main() {
 				"version": "2.0.0",
 			})
 		})
+
+		v2_auth := v2.Group("")
+		v2_auth.Use(middleware.AuthRequired(cfg.Auth0))
+		{
+			v2_auth.POST("/users/sync", userHandler.Sync)
+			v2_auth.POST("/users/me", userHandler.Me)
+		}
 	}
 
 	// Start server on port 8081 (TypeScript backend is on 8080)
