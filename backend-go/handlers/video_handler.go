@@ -1,20 +1,21 @@
 package handlers
 
 import (
+
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type VideoUploadHandler struct {
+type VideoHandler struct {
 	pool     *pgxpool.Pool
 	s3Client *s3.Client
 	bucket   string
 	cdnURL   string
 }
 
-func NewVideoUploadHandler(pool *pgxpool.Pool, s3Client *s3.Client, bucket string, cdnURL string) *VideoUploadHandler {
-	return &VideoUploadHandler{
+func NewVideoHandler(pool *pgxpool.Pool, s3Client *s3.Client, bucket string, cdnURL string) *VideoHandler {
+	return &VideoHandler{
 		pool:     pool,
 		s3Client: s3Client,
 		bucket:   bucket,
@@ -22,36 +23,44 @@ func NewVideoUploadHandler(pool *pgxpool.Pool, s3Client *s3.Client, bucket strin
 	}
 }
 
-// GetPresignedURL generates a presigned URL for direct client upload
-func (h *VideoUploadHandler) GetPresignedURL(c *gin.Context) {
-	// TODO: implement
-	// 1. Parse request (filename, filesize)
-	// 2. Validate file type/size
-	// 3. Generate unique object key
-	// 4. Create video record in DB with status "pending_upload"
-	// 5. Generate presigned PUT URL
-	// 6. Return presigned URL + video ID to client
+// GET /videos
+func (h *VideoHandler) List(c *gin.Context) {
 	c.JSON(501, gin.H{"error": "not implemented"})
 }
 
-// ConfirmUpload marks a video as uploaded after the client finishes uploading bytes.
-// This is typically where you verify the object exists and kick off downstream processing.
-func (h *VideoUploadHandler) ConfirmUpload(c *gin.Context) {
-	// TODO: implement
-	// 1. Get video ID from request
-	// 2. Verify the object exists in S3
-	// 3. Update video status to "queued"
-	// 4. Return success
+// GET /videos/:id
+func (h *VideoHandler) Get(c *gin.Context) {
 	c.JSON(501, gin.H{"error": "not implemented"})
 }
 
-// DeleteUpload removes a video and its S3 object
-func (h *VideoUploadHandler) DeleteUpload(c *gin.Context) {
-	// TODO: implement
-	// 1. Get video ID from request
-	// 2. Verify user owns the video
-	// 3. Delete S3 object
-	// 4. Delete DB record
-	// 5. Return success
+// POST /videos/upload/init
+func (h *VideoHandler) UploadInit(c *gin.Context) {
+	// 1. Get post request body
+	
+	// 2. Route to upload service to:
+		// validate file type/size
+		// create DB entry for video with status
+		// generate presigned URL
+	
+	// 3. Return presigned URL and video ID
+	c.JSON(501, gin.H{"error": "not implemented"})
+}
+
+// POST /videos/:id/upload/confirm
+func (h *VideoHandler) UploadConfirm(c *gin.Context) {
+	// 1. Get video ID from client 
+
+	// 2. Route to upload service to:
+		// validate video exists and belongs to user
+		// update video status in DB
+		// triggers any post-upload processing (transcoding, thumbnail generation, etc)
+
+	// 3. (LATER) We can configure using background jobs or event-driven architecture later 
+		// (with Redis, RabbitMQ, etc)
+	c.JSON(501, gin.H{"error": "not implemented"})
+}
+
+// DELETE /videos/:id
+func (h *VideoHandler) Delete(c *gin.Context) {
 	c.JSON(501, gin.H{"error": "not implemented"})
 }
