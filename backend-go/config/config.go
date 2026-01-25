@@ -10,6 +10,13 @@ type Config struct {
 	Port        string
 	Environment string
 	DatabaseURL string
+
+	Auth0 Auth0Config
+}
+
+type Auth0Config struct {
+	Domain   string
+	Audience string
 }
 
 func Load() *Config {
@@ -19,6 +26,11 @@ func Load() *Config {
 		Port:        getEnv("PORT", "8081"),
 		Environment: getEnv("ENVIRONMENT", "development"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
+
+		Auth0: Auth0Config{
+			getEnv("Auth0_Domain", ""),
+			getEnv("Auth0_Audience", ""),
+		},
 	}
 }
 
