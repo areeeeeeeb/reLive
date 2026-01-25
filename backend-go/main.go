@@ -31,7 +31,7 @@ func main() {
 
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(pool)
-	videoUploadHandler := handlers.NewVideoUploadHandler(pool, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
+	videoHandler := handlers.NewVideoHandler(pool, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {
@@ -71,8 +71,11 @@ func main() {
 
 			videos := v2_auth.Group("/videos")
 			{
-				videos.POST("/:id/upload/init", videoUploadHandler.GetPresignedURL)
-				videos.POST("/:id/upload/confirm", videoUploadHandler.ConfirmUpload)
+				videos.GET("", videoHandler.List)
+				videos.GET("/:id", videoHandler.Get)
+				videos.POST("/upload/init", videoHandler.UploadInit)
+				videos.POST("/:id/upload/confirm", videoHandler.UploadConfirm)
+				videos.DELETE("/:id", videoHandler.Delete)
 			}
 		}
 	}
