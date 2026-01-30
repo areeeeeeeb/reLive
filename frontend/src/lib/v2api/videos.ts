@@ -17,14 +17,22 @@ export interface UploadInitRequest {
 }
 
 export interface UploadInitResponse {
-  videoId: number;
-  uploadUrl: string;
-  key: string;
-  // TODO: add fields as backend implements them
+  videoId: number;   // video ID in database
+  uploadUrl: string;   // presigned URL for direct upload to object storage
+  key: string;   // object path in bucket
+  partSize?: number;   // chunk size for multipart upload
 }
 
 export interface UploadConfirmRequest {
-  // TODO: add fields as backend implements them
+  videoId: number;   // video ID in database
+  key: string;   // object path in bucket
+  sizeBytes: number;   // size of the uploaded file
+  md5Hash: string;   // MD5 hash of the uploaded file
+  contentType: string;   // content type of the uploaded file
+  originalFilename: string;   // original filename of the uploaded file
+  uploadId: string;   // upload ID for the multipart upload
+  partNumber: number;   // part number for the multipart upload
+  etag: string;   // ETag of the uploaded part
 }
 
 // ============================================================================
