@@ -10,29 +10,27 @@ export interface Video {
   // TODO: add fields as backend implements them
 }
 
-export interface UploadInitRequest {
+export interface UploadVideoInitRequest {
   filename: string;
   contentType: string;
   sizeBytes: number;
 }
 
-export interface UploadInitResponse {
-  videoId: number;   // video ID in database
-  uploadUrl: string;   // presigned URL for direct upload to object storage
-  key: string;   // object path in bucket
-  partSize?: number;   // chunk size for multipart upload
+export interface UploadVideoInitResponse {
+  videoId: number;      // video ID in database
+  uploadId: string;     // S3 multipart upload ID
+  partUrls: string[];   // presigned URL for each part (in order)
+  partSize: number;     // size of each part
 }
 
-export interface UploadConfirmRequest {
-  videoId: number;   // video ID in database
-  key: string;   // object path in bucket
-  sizeBytes: number;   // size of the uploaded file
-  md5Hash: string;   // MD5 hash of the uploaded file
-  contentType: string;   // content type of the uploaded file
-  originalFilename: string;   // original filename of the uploaded file
-  uploadId: string;   // upload ID for the multipart upload
-  partNumber: number;   // part number for the multipart upload
-  etag: string;   // ETag of the uploaded part
+export interface UploadedPart {
+  partNumber: number;
+  etag: string;
+}
+
+export interface UploadVideoConfirmRequest {
+  uploadId: string;       // S3 multipart upload ID
+  parts: UploadedPart[];  // all completed parts
 }
 
 // ============================================================================
@@ -61,7 +59,7 @@ export const getVideo = async (videoId: number): Promise<Video> => {
  * POST /v2/api/videos/upload/init
  * Get presigned URL for direct upload to object storage
  */
-export const uploadVideoInit = async (req: UploadInitRequest): Promise<UploadInitResponse> => {
+export const uploadVideoInit = async (req: UploadVideoInitRequest): Promise<UploadVideoInitResponse> => {
   const res = await apiClient.post(API_V2_ENDPOINTS.uploadVideoInit, req);
   return res.data;
 };
@@ -70,8 +68,8 @@ export const uploadVideoInit = async (req: UploadInitRequest): Promise<UploadIni
  * POST /v2/api/videos/:id/upload/confirm
  * Confirm upload completed, kick off processing
  */
-export const uploadVideoConfirm = async (videoId: number, req?: UploadConfirmRequest): Promise<void> => {
-  await apiClient.post(API_V2_ENDPOINTS.uploadVideoConfirm(videoId), req ?? {});
+export const uploadVideoConfirm = async (videoId: number, req: UploadVideoConfirmRequest): Promise<void> => {
+  await apiClient.post(API_V2_ENDPOINTS.uploadVideoConfirm(videoId), req);
 };
 
 /**
