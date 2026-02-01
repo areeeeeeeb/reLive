@@ -5,22 +5,13 @@ import (
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type UserQueries struct {
-	pool *pgxpool.Pool
-}
-
-func NewUserQueries(pool *pgxpool.Pool) *UserQueries {
-	return &UserQueries{pool: pool}
-}
-
-func (uq *UserQueries) GetByID(c *gin.Context, userID int) {
+func (s *Store) GetUserByID(c *gin.Context, userID int) {
 	// TODO
 }
 
-func (uq *UserQueries) Upsert(c *gin.Context, user *models.User) (*models.User, error) {
+func (s *Store) UpsertUser(c *gin.Context, user *models.User) (*models.User, error) {
 	if user == nil {
 		return nil, errors.New("user is nil")
 	}
@@ -49,7 +40,7 @@ func (uq *UserQueries) Upsert(c *gin.Context, user *models.User) (*models.User, 
 	var profilePicture *string
 	var bio *string
 
-	err := uq.pool.QueryRow(
+	err := s.pool.QueryRow(
 		c.Request.Context(),
 		q,
 		user.Auth0ID,
@@ -77,3 +68,4 @@ func (uq *UserQueries) Upsert(c *gin.Context, user *models.User) (*models.User, 
 	out.Bio = bio
 	return &out, nil
 }
+

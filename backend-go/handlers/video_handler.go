@@ -1,26 +1,16 @@
 package handlers
 
 import (
-
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type VideoHandler struct {
-	pool     *pgxpool.Pool
-	s3Client *s3.Client
-	bucket   string
-	cdnURL   string
+	videoService *services.VideoService
 }
 
-func NewVideoHandler(pool *pgxpool.Pool, s3Client *s3.Client, bucket string, cdnURL string) *VideoHandler {
-	return &VideoHandler{
-		pool:     pool,
-		s3Client: s3Client,
-		bucket:   bucket,
-		cdnURL:   cdnURL,
-	}
+func NewVideoHandler(videoService *services.VideoService) *VideoHandler {
+	return &VideoHandler{videoService: videoService}
 }
 
 // GET /videos
