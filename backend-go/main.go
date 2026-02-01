@@ -5,8 +5,10 @@ import (
 	"log"
 
 	"github.com/areeeeeeeb/reLive/backend-go/config"
+	"github.com/areeeeeeeb/reLive/backend-go/database"
 	"github.com/areeeeeeeb/reLive/backend-go/handlers"
 	"github.com/areeeeeeeb/reLive/backend-go/middleware"
+	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,9 +31,16 @@ func main() {
 
 	r := gin.Default()
 
+	// store for DB operations
+	store := database.NewStore(pool)
+
+	// add service structs here
+	userService := services.NewUserService(store)
+	videoService := services.NewVideoService(store, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
+
 	// add handler structs here
-	userHandler := handlers.NewUserHandler(pool)
-	videoHandler := handlers.NewVideoHandler(pool, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
+	userHandler := handlers.NewUserHandler(userService)
+	videoHandler := handlers.NewVideoHandler(videoService)
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {
