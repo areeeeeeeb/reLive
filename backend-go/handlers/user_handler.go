@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
 )
@@ -14,12 +15,7 @@ func NewUserHandler(userService *services.UserService) *UserHandler {
 }
 
 func (h *UserHandler) Sync(c *gin.Context) {
-	type SyncUserRequest struct {
-		Email       string `json:"email" binding:"required,email"`
-		Username    string `json:"username" binding:"required"`
-		DisplayName string `json:"displayName"`  //optional
-	}
-	var req SyncUserRequest
+	var req models.SyncUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -41,13 +37,7 @@ func (h *UserHandler) Sync(c *gin.Context) {
 
 // TestSync bypasses auth for local testing
 func (h *UserHandler) TestSync(c *gin.Context) {
-	type TestSyncRequest struct {
-		Auth0ID     string `json:"auth0Id" binding:"required"`
-		Email       string `json:"email" binding:"required,email"`
-		Username    string `json:"username" binding:"required"`
-		DisplayName string `json:"displayName"`
-	}
-	var req TestSyncRequest
+	var req models.TestSyncRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return

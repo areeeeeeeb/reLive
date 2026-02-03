@@ -26,22 +26,6 @@ const (
 	VideoStatusNoMatch       = "no_event_found"
 )
 
-// UploadURLRequest for requesting a presigned upload URL
-type UploadURLRequest struct {
-	Filename    string `json:"filename" binding:"required"`
-	ContentType string `json:"contentType" binding:"required"`
-	SizeBytes   int64  `json:"sizeBytes" binding:"required,min=1"`
-}
-
-// UploadURLResponse returned with presigned URLs for multipart upload
-type UploadURLResponse struct {
-	VideoID  int      `json:"videoId"`
-	UploadID string   `json:"uploadId"`
-	PartURLs []string `json:"partUrls"`
-	PartSize int64    `json:"partSize"`
-}
-
-
 // VideoMetadata extracted from video file
 type VideoMetadata struct {
 	GPS       GPSCoordinates

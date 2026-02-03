@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
 )
 
 type VideoHandler struct {
@@ -26,26 +26,32 @@ func (h *VideoHandler) Get(c *gin.Context) {
 
 // POST /videos/upload/init
 func (h *VideoHandler) UploadInit(c *gin.Context) {
-	// 1. Get post request body
-	var req models.UploadURLRequest
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(400, gin.H{"error": err.Error()})
-        return
+	var req models.UploadInitRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
 	}
-	// 2. Route to upload service to:
-		// validate file type/size
-		// create DB entry for video with status
-		// generate presigned URL
 
-		userID := int(1) // TEMP: get from auth middleware later
-	
-	resp, err := h.videoService.InitUpload(c, userID, req)
+	userID := int(1) // TEMP: get from auth middleware later
+
+	result, err := h.videoService.InitUpload(
+		c,
+		userID,
+		req.Filename,
+		req.ContentType,
+		req.SizeBytes,
+	)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	// 3. Return presigned URL and video ID
-	c.JSON(200, resp)
+
+	c.JSON(200, models.UploadInitResponse{
+		VideoID:  result.VideoID,
+		UploadID: result.UploadID,
+		PartURLs: result.PartURLs,
+		PartSize: result.PartSize,
+	})
 }
 
 // POST /videos/:id/upload/confirm
