@@ -25,12 +25,40 @@ func (h *UserHandler) Sync(c *gin.Context) {
 		return
 	}
 
+	if c.GetString("auth0_id") == "" {
+		c.JSON(400, gin.H{"error": "auth0_id is required"})
+		return
+	}
+
 	user, err := h.userService.Sync(c, c.GetString("auth0_id"), req.Email, req.Username, req.DisplayName)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	
+	c.JSON(200, gin.H{"user": user})
+}
+
+// TestSync bypasses auth for local testing
+func (h *UserHandler) TestSync(c *gin.Context) {
+	type TestSyncRequest struct {
+		Auth0ID     string `json:"auth0Id" binding:"required"`
+		Email       string `json:"email" binding:"required,email"`
+		Username    string `json:"username" binding:"required"`
+		DisplayName string `json:"displayName"`
+	}
+	var req TestSyncRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.userService.Sync(c, req.Auth0ID, req.Email, req.Username, req.DisplayName)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(200, gin.H{"user": user})
 }
 
