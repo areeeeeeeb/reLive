@@ -37,8 +37,6 @@ func (s *Store) UpsertUser(c *gin.Context, user *models.User) (*models.User, err
 		id, auth0_id, email, username, display_name, profile_picture, bio, created_at, updated_at`
 
 	var out models.User
-	var profilePicture *string
-	var bio *string
 
 	err := s.pool.QueryRow(
 		c.Request.Context(),
@@ -55,8 +53,8 @@ func (s *Store) UpsertUser(c *gin.Context, user *models.User) (*models.User, err
 		&out.Email,
 		&out.Username,
 		&out.DisplayName,
-		&profilePicture,
-		&bio,
+		&out.ProfilePictureURL,
+		&out.Bio,
 		&out.CreatedAt,
 		&out.UpdatedAt,
 	)
@@ -64,8 +62,6 @@ func (s *Store) UpsertUser(c *gin.Context, user *models.User) (*models.User, err
 		return nil, err
 	}
 
-	out.ProfilePictureURL = profilePicture
-	out.Bio = bio
 	return &out, nil
 }
 

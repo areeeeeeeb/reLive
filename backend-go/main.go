@@ -69,6 +69,15 @@ func main() {
 			})
 		})
 
+		// dev-only routes (no auth). disabled in production
+		if cfg.Environment != "production" {
+			dev := v2.Group("/dev")
+			{
+				dev.POST("/users/sync", userHandler.TestSync)
+			}
+		}
+
+		// auth required routes
 		v2_auth := v2.Group("")
 		v2_auth.Use(middleware.AuthRequired(cfg.Auth0))
 		{
