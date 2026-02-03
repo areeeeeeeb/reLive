@@ -7,6 +7,7 @@ type Video struct {
 	ID           int        `db:"id" json:"id"`
 	UserID       int        `db:"user_id" json:"user_id"`
 	Filename     string     `db:"filename" json:"filename"`
+	S3Key        string     `db:"s3_key" json:"-"`
 	VideoURL     string     `db:"video_url" json:"video_url"`
 	ThumbnailURL *string    `db:"thumbnail_url" json:"thumbnail_url"` // Nullable
 	Duration     *float64   `db:"duration" json:"duration"`           // Nullable (in seconds)
@@ -27,17 +28,19 @@ const (
 
 // UploadURLRequest for requesting a presigned upload URL
 type UploadURLRequest struct {
-	Filename string `json:"filename" binding:"required"`
-	FileSize int64  `json:"file_size" binding:"required,min=1"`
+	Filename    string `json:"filename" binding:"required"`
+	ContentType string `json:"contentType" binding:"required"`
+	SizeBytes   int64  `json:"sizeBytes" binding:"required,min=1"`
 }
 
-// UploadURLResponse returned with presigned URL
+// UploadURLResponse returned with presigned URLs for multipart upload
 type UploadURLResponse struct {
-	UploadURL string `json:"upload_url"`
-	VideoURL  string `json:"video_url"`
-	VideoID   int    `json:"video_id"`
-	// chunk size instructions? Figure out as we implement
+	VideoID  int      `json:"videoId"`
+	UploadID string   `json:"uploadId"`
+	PartURLs []string `json:"partUrls"`
+	PartSize int64    `json:"partSize"`
 }
+
 
 // VideoMetadata extracted from video file
 type VideoMetadata struct {
