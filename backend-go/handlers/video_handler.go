@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
@@ -56,14 +58,32 @@ func (h *VideoHandler) UploadInit(c *gin.Context) {
 
 // POST /videos/:id/upload/confirm
 func (h *VideoHandler) UploadConfirm(c *gin.Context) {
-	// 1. Get video ID from client
-	// 2. Route to upload service to:
-		// validate video exists and belongs to user
-		// update video status in DB
-		// triggers any post-upload processing (transcoding, thumbnail generation, etc)
-	// 3. (LATER) We can configure using background jobs or event-driven architecture later
-		// (with Redis, RabbitMQ, etc)
-	c.JSON(501, gin.H{"error": "not implemented"})
+	var req models.UploadConfirmRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	// LATER: WRITE A FUNCTION IN VIDEOHANDLER TO VALIDATE VIDEOID, UPLOADID, PARTS
+
+	// Get video ID from URL parameter
+	videoID := 0
+	if _, err := fmt.Sscanf(c.Param("id"), "%d", &videoID); err != nil {
+		c.JSON(400, gin.H{"error": "invalid video ID"})
+		return
+	}
+
+	userID := int(1) // TEMP: get from auth middleware later
+
+	// Confirm upload
+	if err := h.videoService.ConfirmUpload(c.Request.Context(), videoID, userID, req.UploadID, req.Parts); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, models.UploadConfirmResponse{
+		VideoID: videoID,
+		Status:  models.VideoStatusQueued,
+	})
 }
 
 // DELETE /videos/:id
