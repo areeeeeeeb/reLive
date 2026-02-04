@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
+	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 )
@@ -73,4 +74,38 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, filename stri
         PartURLs: partURLs,
         PartSize: partSize,
     }, nil
+}
+
+// ConfirmUpload completes a multipart upload and updates video status
+func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID int, uploadID string, parts []models.UploadPart) error {
+    // Get video to verify ownership and get S3 key
+    video, err := s.store.GetVideoByID(ctx, videoID)
+    if err != nil {
+        return fmt.Errorf("video not found: %w", err)
+    }
+
+    // Verify user owns this video
+    if video.UserID != userID {
+        return fmt.Errorf("unauthorized: video does not belong to user")
+    }
+
+    // Verify video is in correct status
+    if video.Status != models.VideoStatusPendingUpload {
+        return fmt.Errorf("video is not in pending_upload status (current: %s)", video.Status)
+    }
+
+    // Complete multipart upload in S3
+    if err := s.uploadService.CompleteMultipartUpload(ctx, video.S3Key, uploadID, parts); err != nil {
+        // Cleanup: abort S3 upload and mark video as failed (best effort)
+        _ = s.uploadService.AbortMultipartUpload(ctx, video.S3Key, uploadID)
+        _ = s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusFailed)
+        return fmt.Errorf("failed to complete S3 upload: %w", err)
+    }
+
+    // Update video status to queued (ready for processing)
+    if err := s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusQueued); err != nil {
+        return fmt.Errorf("failed to update video status: %w", err)
+    }
+
+    return nil
 }

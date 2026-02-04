@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 const (
@@ -94,6 +96,31 @@ func (s *UploadService) AbortMultipartUpload(ctx context.Context, key string, up
 	})
 	if err != nil {
 		return fmt.Errorf("failed to abort multipart upload: %w", err)
+	}
+	return nil
+}
+
+// CompleteMultipartUpload finalizes a multipart upload
+func (s *UploadService) CompleteMultipartUpload(ctx context.Context, key string, uploadID string, parts []models.UploadPart) error {
+	// Convert to S3 CompletedPart format
+	completedParts := make([]s3Types.CompletedPart, len(parts))
+	for i, part := range parts {
+		completedParts[i] = s3Types.CompletedPart{
+			PartNumber: aws.Int32(int32(part.PartNumber)),
+			ETag:       aws.String(part.ETag),
+		}
+	}
+
+	_, err := s.s3Client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(s.bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+		MultipartUpload: &s3Types.CompletedMultipartUpload{
+			Parts: completedParts,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to complete multipart upload: %w", err)
 	}
 	return nil
 }
