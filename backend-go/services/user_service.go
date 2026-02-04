@@ -1,9 +1,10 @@
 package services
 
 import (
+	"context"
+
 	"github.com/areeeeeeeb/reLive/backend-go/database"
 	"github.com/areeeeeeeb/reLive/backend-go/models"
-	"github.com/gin-gonic/gin"
 )
 
 type UserService struct {
@@ -17,7 +18,7 @@ func NewUserService(store *database.Store) *UserService {
 // sync handles Auth0 login/signup
 // updates on conflict because user info
 // email, display name can change in the OAuth provider
-func (s *UserService) Sync(c *gin.Context, auth0ID, email, username, displayName string) (*models.User, error) {
+func (s *UserService) Sync(ctx context.Context, auth0ID, email, username, displayName string) (*models.User, error) {
 	if displayName == "" {
 		displayName = username
 	}
@@ -29,5 +30,5 @@ func (s *UserService) Sync(c *gin.Context, auth0ID, email, username, displayName
 		ProfilePictureURL: nil,
 		Bio:               nil,
 	}
-	return s.store.UpsertUser(c, user)
+	return s.store.UpsertUser(ctx, user)
 }
