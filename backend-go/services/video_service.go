@@ -1,12 +1,12 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
@@ -35,8 +35,7 @@ func NewVideoService(store *database.Store, s3Client *s3.Client, bucket string, 
 		cdnURL:   cdnURL,
 	}
 }
-func (s *VideoService) InitUpload(c *gin.Context, userID int, filename string, contentType string, sizeBytes int64) (*InitUploadResult, error) {
-    ctx := c.Request.Context()
+func (s *VideoService) InitUpload(ctx context.Context, userID int, filename string, contentType string, sizeBytes int64) (*InitUploadResult, error) {
     if !strings.HasPrefix(contentType, "video/") {
         return nil, fmt.Errorf("invalid content type: %s, must be a video", contentType)
     }

@@ -26,7 +26,7 @@ func (h *UserHandler) Sync(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.Sync(c, c.GetString("auth0_id"), req.Email, req.Username, req.DisplayName)
+	user, err := h.userService.Sync(c.Request.Context(), c.GetString("auth0_id"), req.Email, req.Username, req.DisplayName)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -43,7 +43,7 @@ func (h *UserHandler) TestSync(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.Sync(c, req.Auth0ID, req.Email, req.Username, req.DisplayName)
+	user, err := h.userService.Sync(c.Request.Context(), req.Auth0ID, req.Email, req.Username, req.DisplayName)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

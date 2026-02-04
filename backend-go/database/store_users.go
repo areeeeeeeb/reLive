@@ -1,17 +1,17 @@
 package database
 
 import (
+	"context"
 	"errors"
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
-	"github.com/gin-gonic/gin"
 )
 
-func (s *Store) GetUserByID(c *gin.Context, userID int) {
+func (s *Store) GetUserByID(ctx context.Context, userID int) {
 	// TODO
 }
 
-func (s *Store) UpsertUser(c *gin.Context, user *models.User) (*models.User, error) {
+func (s *Store) UpsertUser(ctx context.Context, user *models.User) (*models.User, error) {
 	if user == nil {
 		return nil, errors.New("user is nil")
 	}
@@ -39,7 +39,7 @@ func (s *Store) UpsertUser(c *gin.Context, user *models.User) (*models.User, err
 	var out models.User
 
 	err := s.pool.QueryRow(
-		c.Request.Context(),
+		ctx,
 		q,
 		user.Auth0ID,
 		user.Email,
