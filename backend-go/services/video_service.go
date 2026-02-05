@@ -94,18 +94,18 @@ func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID in
         return fmt.Errorf("video is not in pending_upload status (current: %s)", video.Status)
     }
 
-    // Complete multipart upload in S3
-    if err := s.uploadService.CompleteMultipartUpload(ctx, video.S3Key, uploadID, parts); err != nil {
-        // Cleanup: abort S3 upload and mark video as failed (best effort)
-        _ = s.uploadService.AbortMultipartUpload(ctx, video.S3Key, uploadID)
-        _ = s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusFailed)
-        return fmt.Errorf("failed to complete S3 upload: %w", err)
-    }
+	// Complete multipart upload in S3
+	if err := s.uploadService.CompleteMultipartUpload(ctx, video.S3Key, uploadID, parts); err != nil {
+		// Cleanup: abort S3 upload and mark video as failed (best effort)
+		_ = s.uploadService.AbortMultipartUpload(ctx, video.S3Key, uploadID)
+		_, _ = s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusFailed)
+		return fmt.Errorf("failed to complete S3 upload: %w", err)
+	}
 
-    // Update video status to queued (ready for processing)
-    if err := s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusQueued); err != nil {
-        return fmt.Errorf("failed to update video status: %w", err)
-    }
+	// Update video status to queued (ready for processing)
+	if _, err := s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusQueued); err != nil {
+		return fmt.Errorf("failed to update video status: %w", err)
+	}
 
-    return nil
+	return nil
 }
