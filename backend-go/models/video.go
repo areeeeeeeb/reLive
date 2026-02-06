@@ -23,7 +23,6 @@ const (
 	VideoStatusProcessing    = "processing"
 	VideoStatusCompleted     = "completed"
 	VideoStatusFailed        = "failed"
-	VideoStatusNoMatch       = "no_event_found"
 )
 
 // VideoMetadata extracted from video file
