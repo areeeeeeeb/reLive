@@ -41,7 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clientID: AUTH0_CLIENT_ID,
     redirectUri: window.location.origin,
     responseType: 'token id_token',
-    scope: 'openid profile email'
+    scope: 'openid profile email',
+    audience: AUTH0_AUDIENCE
   });
 
   // handle authentication result
