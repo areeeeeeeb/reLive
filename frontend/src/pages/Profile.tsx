@@ -1,6 +1,6 @@
 import { IonAvatar, IonSpinner } from '@ionic/react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { PageContent } from '@/components/layout/page-content';
 import { useEffect, useState } from 'react';
 import { getUserHome, UserHomeResponse } from '@/lib/api/users';
