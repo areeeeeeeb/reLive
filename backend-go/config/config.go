@@ -38,8 +38,8 @@ func Load() *Config {
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 
 		Auth0: Auth0Config{
-			getEnv("Auth0_Domain", ""),
-			getEnv("Auth0_Audience", ""),
+			Domain:   getEnv("AUTH0_DOMAIN", ""),
+			Audience: getEnv("AUTH0_AUDIENCE", ""),
 		},
 
 		Spaces: SpacesConfig{
