@@ -9,6 +9,7 @@ import (
 	"github.com/areeeeeeeb/reLive/backend-go/handlers"
 	"github.com/areeeeeeeb/reLive/backend-go/middleware"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,6 +31,15 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	// CORS middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	// store for DB operations
 	store := database.NewStore(pool)
