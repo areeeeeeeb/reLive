@@ -1,20 +1,15 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import auth0, { Auth0DecodedHash, Auth0Error, Auth0UserProfile, WebAuth } from 'auth0-js';
-import { AUTH0_DOMAIN, AUTH0_CLIENT_ID } from '@/lib/config';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import auth0, { Auth0DecodedHash, Auth0UserProfile, WebAuth } from 'auth0-js';
+import { AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_AUDIENCE } from '@/lib/config';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: Auth0UserProfile | null;
   accessToken: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  authorize: () => void;
-  passwordlessStart: (email: string) => Promise<void>;
-  passwordlessLogin: (email: string, verificationCode: string) => Promise<void>;
-  signup: (email: string, password: string, name?: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, username: string, displayName?: string) => Promise<void>;
   logout: () => void;
-  getAccessToken: () => Promise<string | null>;
-  getUserId: () => number | null;
   error: string | null;
 }
 
@@ -45,21 +40,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     audience: AUTH0_AUDIENCE
   });
 
-  // handle authentication result
-  const handleAuthentication = useCallback(() => {
-    webAuth.parseHash((err: Auth0Error | null, authResult: Auth0DecodedHash | null) => {
-      if (authResult && authResult.accessToken && authResult.idToken) {
-        setSession(authResult);
-        // clear the hash from URL
-        window.history.replaceState(null, '', window.location.pathname);
-      } else if (err) {
-        console.error('Authentication error:', err);
-        setError(err.errorDescription || 'Authentication failed');
-        setIsLoading(false);
-      }
-    });
-  }, []);
-
   // set authentication session
   const setSession = (authResult: Auth0DecodedHash) => {
     // set the time that the access token will expire
@@ -74,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAccessToken(authResult.accessToken || null);
 
     // get user profile
-    webAuth.client.userInfo(authResult.accessToken || '', (err, profile) => {
+    webAuth.client.userInfo(authResult.accessToken || '', async (err, profile) => {
       if (err) {
         console.error('Failed to get user info:', err);
         setError('Failed to get user information');
@@ -84,23 +64,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(profile);
       setIsAuthenticated(true);
+
+      // sync user with backend
+      try {
+        await syncUserWithBackend(authResult.accessToken || '', profile);
+      } catch (syncErr) {
+        console.error('Failed to sync user with backend:', syncErr);
+      }
+
       setIsLoading(false);
     });
   };
 
-  // login with email and password (embedded login)
-  const login = async (email: string, password: string): Promise<void> => {
+  // sync user with backend database
+  const syncUserWithBackend = async (accessToken: string, profile: Auth0UserProfile) => {
+    const API_V2_BASE_URL = import.meta.env.VITE_API_V2_BASE_URL || 'http://localhost:8081';
+
+    // THIS NEEDS FIXING: nickname is not the same as username
+    const username = profile.nickname;
+
+    const response = await fetch(`${API_V2_BASE_URL}/v2/api/users/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({
+        email: profile.email || '',
+        username
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend sync failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('User synced with backend:', data);
+    return data;
+  };
+
+  // login with username and password
+  const login = async (username: string, password: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
 
     return new Promise((resolve, reject) => {
-      webAuth.login(
+      webAuth.client.login(
         {
           realm: 'Username-Password-Authentication',
-          email,
-          password
+          username,
+          password,
+          audience: AUTH0_AUDIENCE,
+          scope: 'openid profile email'
         },
-        (err) => {
+        (err, authResult) => {
           if (err) {
             console.error('Login error:', err);
             setError(err.description || 'Login failed');
@@ -108,80 +126,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             reject(err);
             return;
           }
-          // after successful login, parse the hash
-          handleAuthentication();
-          resolve();
-        }
-      );
-    });
-  };
-
-  // authorize using Universal Login Page (ULP)
-  const authorize = () => {
-    setError(null);
-    webAuth.authorize({
-      responseType: 'id_token',
-      prompt: 'none' // Skip consent screen
-    } as any);
-  };
-
-  // start passwordless authentication
-  const passwordlessStart = async (email: string): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
-
-    return new Promise((resolve, reject) => {
-      webAuth.passwordlessStart(
-        {
-          connection: 'email',
-          send: 'code',
-          email
-        },
-        (err, result) => {
-          setIsLoading(false);
-          if (err) {
-            console.error('Passwordless start error:', err);
-            setError(err.description || 'Failed to send verification code');
-            reject(err);
-            return;
-          }
-          console.log('Passwordless code sent:', result);
-          resolve();
-        }
-      );
-    });
-  };
-
-  // verify passwordless code and login
-  const passwordlessLogin = async (email: string, verificationCode: string): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
-
-    return new Promise((resolve, reject) => {
-      webAuth.passwordlessLogin(
-        {
-          connection: 'email',
-          verificationCode,
-          email
-        },
-        (err, res) => {
-          if (err) {
-            console.error('Passwordless login error:', err);
-            setError(err.description || 'Verification failed');
+          
+          if (authResult && authResult.accessToken && authResult.idToken) {
+            setSession(authResult as Auth0DecodedHash);
+            resolve();
+          } else {
+            setError('Login failed - no tokens received');
             setIsLoading(false);
-            reject(err);
-            return;
+            reject(new Error('No tokens received'));
           }
-          console.log('Passwordless login success:', res);
-          handleAuthentication();
-          resolve();
         }
       );
     });
   };
 
-  // Signup with email and password
-  const signup = async (email: string, password: string, name?: string): Promise<void> => {
+  // signup
+  const signup = async (email: string, password: string, username: string, displayName?: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
 
@@ -191,7 +151,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           connection: 'Username-Password-Authentication',
           email,
           password,
-          user_metadata: name ? { name } : undefined,
+          username,
+          user_metadata: {
+            displayName: displayName || username
+          },
         } as any,
         (err) => {
           if (err) {
@@ -202,9 +165,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
 
-          // After successful signup, automatically log in
+          // After successful signup, automatically log in with username
           // NOTE: This triggers a redirect to Auth0's consent page on localhost
-          login(email, password)
+          login(username, password)
             .then(resolve)
             .catch((loginErr) => {
               setIsLoading(false);
@@ -227,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setIsAuthenticated(false);
 
-    // logout from Auth0
+    // logout from Auth0 (clears Auth0 session)
     webAuth.logout({
       returnTo: window.location.origin,
       clientID: AUTH0_CLIENT_ID
@@ -241,49 +204,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return new Date().getTime() < JSON.parse(expiresAt);
   };
 
-  // get access token (renew if needed)
-  const getAccessToken = async (): Promise<string | null> => {
-    const token = localStorage.getItem('access_token');
-
-    if (token && isSessionValid()) {
-      return token;
-    }
-
-    // try to renew token silently using checkSession
-    return new Promise((resolve) => {
-      webAuth.checkSession({}, (err, authResult) => {
-        if (err) {
-          console.error('Session renewal failed:', err);
-          logout();
-          resolve(null);
-          return;
-        }
-
-        if (authResult && authResult.accessToken) {
-          setSession(authResult);
-          resolve(authResult.accessToken);
-        } else {
-          resolve(null);
-        }
-      });
-    });
-  };
-
-  // initialize - check for existing session
+  // initialize
   useEffect(() => {
-    // check if redirected back from Auth0
-    if (window.location.hash) {
-      handleAuthentication();
-      return;
-    }
-
     // check for existing valid session
     const token = localStorage.getItem('access_token');
     const idToken = localStorage.getItem('id_token');
 
     if (token && idToken && isSessionValid()) {
       setAccessToken(token);
-
       // get user profile
       webAuth.client.userInfo(token, (err, profile) => {
         if (err) {
@@ -292,7 +220,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           return;
         }
-
         setUser(profile);
         setIsAuthenticated(true);
         setIsLoading(false);
@@ -300,12 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       setIsLoading(false);
     }
-  }, [handleAuthentication]);
-
-  const getUserId = (): number | null => {
-    // PLACEHOLDER
-    return 1;
-  };
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -315,13 +237,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         accessToken,
         login,
-        authorize,
-        passwordlessStart,
-        passwordlessLogin,
         signup,
         logout,
-        getAccessToken,
-        getUserId,
         error,
       }}
     >

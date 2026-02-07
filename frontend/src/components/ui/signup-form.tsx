@@ -18,6 +18,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   onSuccess,
   className
 }) => {
+  const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,8 +30,8 @@ export const SignupForm: React.FC<SignupFormProps> = ({
     setLocalError(null);
 
     // Validation
-    if (!email || !password) {
-      setLocalError('Please fill in all fields');
+    if (!username || !email || !password) {
+      setLocalError('Please fill in all required fields');
       return;
     }
 
@@ -44,7 +45,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
       return;
     }
     try {
-      await signup(email, password, name);
+      await signup(email, password, username);
       onSuccess?.();
     } catch (err: any) {
       // Display detailed error message from Auth0
@@ -69,9 +70,6 @@ export const SignupForm: React.FC<SignupFormProps> = ({
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Create your account</h1>
-          <p className="text-muted-foreground text-sm text-balance">
-            Fill in the form below to create your account
-          </p>
         </div>
 
         <Field>
@@ -79,9 +77,20 @@ export const SignupForm: React.FC<SignupFormProps> = ({
           <Input
             id="email"
             type="email"
-            placeholder="m@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={isLoading}
+            required
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="username">Username</FieldLabel>
+          <Input
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             disabled={isLoading}
             required
           />
