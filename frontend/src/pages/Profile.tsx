@@ -1,5 +1,4 @@
 import { IonAvatar, IonSpinner } from '@ionic/react';
-import { useAuth0 } from '@auth0/auth0-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageContent } from '@/components/layout/page-content';
 import { useEffect, useState } from 'react';
@@ -7,11 +6,10 @@ import { getUserHome, UserHomeResponse } from '@/lib/api/users';
 import EventCard from '@/components/EventCard';
 import { Button } from '@/components/ui/button';
 import { useHistory } from 'react-router-dom';
-import { Video, Music, Users, Calendar } from 'lucide-react';
+import { Video, Music, Calendar } from 'lucide-react';
 
 const UserProfile: React.FC = () => {
-  const { user, isLoading: authLoading } = useAuth0();
-  const { logout, getUserId } = useAuth();
+  const { user, isLoading: authLoading, logout, getUserId } = useAuth();
   const history = useHistory();
   const [homeData, setHomeData] = useState<UserHomeResponse | null>(null);
   const [loading, setLoading] = useState(true);

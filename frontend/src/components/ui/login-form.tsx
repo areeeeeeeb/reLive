@@ -19,7 +19,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   onSuccess,
   className
 }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const { login, isLoading, error: authError } = useAuth();
@@ -29,16 +29,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     setLocalError(null);
 
     // basic validation
-    if (!email || !password) {
-      setLocalError('Please enter both email and password');
-      return;
-    }
-    if (!email.includes('@')) {
-      setLocalError('Please enter a valid email address');
+    if (!username || !password) {
+      setLocalError('Please enter both username and password');
       return;
     }
     try {
-      await login(email, password);
+      await login(username, password);
       onSuccess?.();
     } catch (err) {
       // error is handled by AuthContext
@@ -52,26 +48,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit}>
       <FieldGroup>
          <div className="flex flex-col items-center gap-2 text-center">
-            <a
-              href="#"
-              className="flex flex-col items-center gap-2 font-medium"
-            >
-              <span className="sr-only">Acme Inc.</span>
-            </a>
-            <h1 className="text-xl font-bold">Welcome to Acme Inc.</h1>
+            
+            <h1 className="text-xl font-bold">Welcome to reLive</h1>
             <FieldDescription>
               Don&apos;t have an account? <a href="/signup">Sign up</a>
             </FieldDescription>
           </div>
 
         <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <FieldLabel htmlFor="username">Username</FieldLabel>
           <Input
-            id="email"
-            type="email"
-            placeholder="m@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             disabled={isLoading}
             required
           />
