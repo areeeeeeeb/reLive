@@ -14,10 +14,3 @@ type User struct {
 	CreatedAt         time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt         time.Time `db:"updated_at" json:"updated_at"`
 }
-
-// UpdateProfileRequest for updating user profile
-type UpdateProfileRequest struct {
-	DisplayName    string `json:"display_name" binding:"required"`
-	ProfilePicture string `json:"profile_picture"`
-	Bio            string `json:"bio"`
-}
