@@ -1,26 +1,17 @@
 package database
 
 import (
+	"context"
 	"errors"
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
-	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type UserQueries struct {
-	pool *pgxpool.Pool
-}
-
-func NewUserQueries(pool *pgxpool.Pool) *UserQueries {
-	return &UserQueries{pool: pool}
-}
-
-func (uq *UserQueries) GetByID(c *gin.Context, userID int) {
+func (s *Store) GetUserByID(ctx context.Context, userID int) {
 	// TODO
 }
 
-func (uq *UserQueries) Upsert(c *gin.Context, user *models.User) (*models.User, error) {
+func (s *Store) UpsertUser(ctx context.Context, user *models.User) (*models.User, error) {
 	if user == nil {
 		return nil, errors.New("user is nil")
 	}
@@ -46,11 +37,9 @@ func (uq *UserQueries) Upsert(c *gin.Context, user *models.User) (*models.User, 
 		id, auth0_id, email, username, display_name, profile_picture, bio, created_at, updated_at`
 
 	var out models.User
-	var profilePicture *string
-	var bio *string
 
-	err := uq.pool.QueryRow(
-		c.Request.Context(),
+	err := s.pool.QueryRow(
+		ctx,
 		q,
 		user.Auth0ID,
 		user.Email,
@@ -64,8 +53,8 @@ func (uq *UserQueries) Upsert(c *gin.Context, user *models.User) (*models.User, 
 		&out.Email,
 		&out.Username,
 		&out.DisplayName,
-		&profilePicture,
-		&bio,
+		&out.ProfilePictureURL,
+		&out.Bio,
 		&out.CreatedAt,
 		&out.UpdatedAt,
 	)
@@ -73,7 +62,6 @@ func (uq *UserQueries) Upsert(c *gin.Context, user *models.User) (*models.User, 
 		return nil, err
 	}
 
-	out.ProfilePictureURL = profilePicture
-	out.Bio = bio
 	return &out, nil
 }
+

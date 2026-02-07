@@ -1,26 +1,19 @@
 package handlers
 
 import (
+	"fmt"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type VideoHandler struct {
-	pool     *pgxpool.Pool
-	s3Client *s3.Client
-	bucket   string
-	cdnURL   string
+	videoService *services.VideoService
 }
 
-func NewVideoHandler(pool *pgxpool.Pool, s3Client *s3.Client, bucket string, cdnURL string) *VideoHandler {
-	return &VideoHandler{
-		pool:     pool,
-		s3Client: s3Client,
-		bucket:   bucket,
-		cdnURL:   cdnURL,
-	}
+func NewVideoHandler(videoService *services.VideoService) *VideoHandler {
+	return &VideoHandler{videoService: videoService}
 }
 
 // GET /videos
@@ -35,29 +28,62 @@ func (h *VideoHandler) Get(c *gin.Context) {
 
 // POST /videos/upload/init
 func (h *VideoHandler) UploadInit(c *gin.Context) {
-	// 1. Get post request body
-	
-	// 2. Route to upload service to:
-		// validate file type/size
-		// create DB entry for video with status
-		// generate presigned URL
-	
-	// 3. Return presigned URL and video ID
-	c.JSON(501, gin.H{"error": "not implemented"})
+	var req models.UploadInitRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID := int(1) // TEMP: get from auth middleware later
+
+	result, err := h.videoService.InitUpload(
+		c.Request.Context(),
+		userID,
+		req.Filename,
+		req.ContentType,
+		req.SizeBytes,
+	)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, models.UploadInitResponse{
+		VideoID:  result.VideoID,
+		UploadID: result.UploadID,
+		PartURLs: result.PartURLs,
+		PartSize: result.PartSize,
+	})
 }
 
 // POST /videos/:id/upload/confirm
 func (h *VideoHandler) UploadConfirm(c *gin.Context) {
-	// 1. Get video ID from client 
+	var req models.UploadConfirmRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	// LATER: WRITE A FUNCTION IN VIDEOHANDLER TO VALIDATE VIDEOID, UPLOADID, PARTS
 
-	// 2. Route to upload service to:
-		// validate video exists and belongs to user
-		// update video status in DB
-		// triggers any post-upload processing (transcoding, thumbnail generation, etc)
+	// Get video ID from URL parameter
+	videoID := 0
+	if _, err := fmt.Sscanf(c.Param("id"), "%d", &videoID); err != nil {
+		c.JSON(400, gin.H{"error": "invalid video ID"})
+		return
+	}
 
-	// 3. (LATER) We can configure using background jobs or event-driven architecture later 
-		// (with Redis, RabbitMQ, etc)
-	c.JSON(501, gin.H{"error": "not implemented"})
+	userID := int(1) // TEMP: get from auth middleware later
+
+	// Confirm upload
+	if err := h.videoService.ConfirmUpload(c.Request.Context(), videoID, userID, req.UploadID, req.Parts); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, models.UploadConfirmResponse{
+		VideoID: videoID,
+		Status:  models.VideoStatusQueued,
+	})
 }
 
 // DELETE /videos/:id
