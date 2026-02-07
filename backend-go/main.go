@@ -74,6 +74,8 @@ func main() {
 			dev := v2.Group("/dev")
 			{
 				dev.POST("/users/sync", userHandler.TestSync)
+				dev.POST("/videos/upload/init", videoHandler.UploadInit)
+				dev.POST("/videos/:id/upload/confirm", videoHandler.UploadConfirm)		
 			}
 		}
 
