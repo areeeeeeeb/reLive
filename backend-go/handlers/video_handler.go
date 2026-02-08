@@ -65,7 +65,12 @@ func (h *VideoHandler) UploadConfirm(c *gin.Context) {
 	}
 	// LATER: WRITE A FUNCTION IN VIDEOHANDLER TO VALIDATE VIDEOID, UPLOADID, PARTS
 
-	userID := 1
+	userID := c.GetInt("user_id")
+	if userID == 0 {
+		c.JSON(401, gin.H{"error": "user not found"})
+		return
+	}
+
 	// Get video ID from URL parameter
 	
 	videoID, err := strconv.Atoi(c.Param("id"))
