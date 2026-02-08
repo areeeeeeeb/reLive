@@ -47,7 +47,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="dark">
       <IonApp>
         <IonReactRouter>
         {isAuthenticated ? (
