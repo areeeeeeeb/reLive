@@ -5,10 +5,58 @@ import (
 	"errors"
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/jackc/pgx/v5"
 )
 
-func (s *Store) GetUserByID(ctx context.Context, userID int) {
-	// TODO
+const userCols = `
+	id,
+	auth0_id,
+	email,
+	username,
+	display_name,
+	profile_picture,
+	bio,
+	created_at,
+	updated_at,
+	deleted_at
+`
+
+func scanUser(row pgx.Row) (*models.User, error) {
+	var u models.User
+	err := row.Scan(
+		&u.ID,
+		&u.Auth0ID,
+		&u.Email,
+		&u.Username,
+		&u.DisplayName,
+		&u.ProfilePictureURL,
+		&u.Bio,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+		&u.DeletedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (s *Store) GetUserByID(ctx context.Context, userID int) (*models.User, error) {
+	const q = `
+	SELECT ` + userCols + `
+	FROM users
+	WHERE id = $1 AND deleted_at IS NULL`
+
+	return scanUser(s.pool.QueryRow(ctx, q, userID))
+}
+
+func (s *Store) GetUserByAuth0ID(ctx context.Context, auth0ID string) (*models.User, error) {
+	const q = `
+	SELECT ` + userCols + `
+	FROM users
+	WHERE auth0_id = $1 AND deleted_at IS NULL`
+
+	return scanUser(s.pool.QueryRow(ctx, q, auth0ID))
 }
 
 func (s *Store) UpsertUser(ctx context.Context, user *models.User) (*models.User, error) {
@@ -33,12 +81,9 @@ func (s *Store) UpsertUser(ctx context.Context, user *models.User) (*models.User
 		profile_picture = EXCLUDED.profile_picture,
 		bio = EXCLUDED.bio,
 		updated_at = NOW()
-	RETURNING
-		id, auth0_id, email, username, display_name, profile_picture, bio, created_at, updated_at`
+	RETURNING ` + userCols
 
-	var out models.User
-
-	err := s.pool.QueryRow(
+	return scanUser(s.pool.QueryRow(
 		ctx,
 		q,
 		user.Auth0ID,
@@ -47,21 +92,6 @@ func (s *Store) UpsertUser(ctx context.Context, user *models.User) (*models.User
 		user.DisplayName,
 		user.ProfilePictureURL,
 		user.Bio,
-	).Scan(
-		&out.ID,
-		&out.Auth0ID,
-		&out.Email,
-		&out.Username,
-		&out.DisplayName,
-		&out.ProfilePictureURL,
-		&out.Bio,
-		&out.CreatedAt,
-		&out.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &out, nil
+	))
 }
 
