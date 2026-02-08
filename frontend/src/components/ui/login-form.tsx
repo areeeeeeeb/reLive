@@ -8,6 +8,7 @@ import {
   FieldDescription
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Link } from '@/components/ui/link';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginFormProps {
@@ -51,7 +52,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             
             <h1 className="text-xl font-bold">Welcome to reLive</h1>
             <FieldDescription>
-              Don&apos;t have an account? <a href="/signup">Sign up</a>
+              Don&apos;t have an account? <Link to="/signup" className='text-chartreuse underline'>Sign up</Link>
             </FieldDescription>
           </div>
 
@@ -70,12 +71,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         <Field>
           <div className="flex items-center">
             <FieldLabel htmlFor="password">Password</FieldLabel>
-            <a
-              href="#"
-              className="ml-auto text-sm underline-offset-4 hover:underline"
-            >
+            <Link to="#" className="ml-auto text-sm">
               Forgot your password?
-            </a>
+            </Link>
           </div>
           <Input
             id="password"
