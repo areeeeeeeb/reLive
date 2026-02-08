@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"strconv"
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
@@ -65,14 +65,14 @@ func (h *VideoHandler) UploadConfirm(c *gin.Context) {
 	}
 	// LATER: WRITE A FUNCTION IN VIDEOHANDLER TO VALIDATE VIDEOID, UPLOADID, PARTS
 
+	userID := 1
 	// Get video ID from URL parameter
-	videoID := 0
-	if _, err := fmt.Sscanf(c.Param("id"), "%d", &videoID); err != nil {
+	
+	videoID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid video ID"})
 		return
 	}
-
-	userID := int(1) // TEMP: get from auth middleware later
 
 	// Confirm upload
 	if err := h.videoService.ConfirmUpload(c.Request.Context(), videoID, userID, req.UploadID, req.Parts); err != nil {
