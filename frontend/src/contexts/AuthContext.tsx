@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import auth0, { Auth0DecodedHash, Auth0UserProfile } from 'auth0-js';
-import { AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_AUDIENCE, API_V2_BASE_URL } from '@/lib/config';
+import { AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_AUDIENCE } from '@/lib/config';
 import { User } from '@/lib/types';
+import apiClient from '@/lib/v2api/client';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -79,25 +80,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // sync user with backend database
   const syncUserWithBackend = useCallback(async (accessToken: string, profile: Auth0UserProfile): Promise<User> => {
-    const response = await fetch(`${API_V2_BASE_URL}/v2/api/users/sync`, {
-      method: 'POST',
+    const response = await apiClient.post('/v2/api/users/sync', {
+      email: profile.email || '',
+      username: profile.username || '',
+      profile_picture: profile.picture || null,
+    }, {
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
-        email: profile.email || '',
-        username: profile.username || '',
-        profile_picture: profile.picture || null,
-      })
+      }
     });
-
-    if (!response.ok) {
-      throw new Error(`Backend sync failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.user;
+    
+    return response.data.user;
   }, []);
 
   // login with username and password
