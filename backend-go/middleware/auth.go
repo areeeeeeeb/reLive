@@ -17,7 +17,7 @@ func AuthRequired(auth0 config.Auth0Config) gin.HandlerFunc {
 	domain := auth0.Domain
 	audience := auth0.Audience
 
-	issuerUrl, err := url.Parse("http://" + domain + "/")
+	issuerUrl, err := url.Parse("https://" + domain + "/")
 	if err != nil {
 		log.Fatalf("failed to parse issuer url: %v", err)
 	}

@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import auth0, { Auth0DecodedHash, Auth0UserProfile, WebAuth } from 'auth0-js';
-import { AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_AUDIENCE } from '@/lib/config';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import auth0, { Auth0DecodedHash, Auth0UserProfile } from 'auth0-js';
+import { AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_AUDIENCE, API_V2_BASE_URL } from '@/lib/config';
+import { User } from '@/lib/types';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: Auth0UserProfile | null;
+  user: User | null;
   accessToken: string | null;
   login: (username: string, password: string) => Promise<void>;
   signup: (email: string, password: string, username: string, displayName?: string) => Promise<void>;
@@ -26,19 +27,19 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<Auth0UserProfile | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // initialize Auth0 WebAuth
-  const webAuth = new auth0.WebAuth({
+  const webAuth = useMemo(() => new auth0.WebAuth({
     domain: AUTH0_DOMAIN,
     clientID: AUTH0_CLIENT_ID,
     redirectUri: window.location.origin,
     responseType: 'token id_token',
     scope: 'openid profile email',
     audience: AUTH0_AUDIENCE
-  });
+  }), []);
 
   // set authentication session
   const setSession = (authResult: Auth0DecodedHash) => {
@@ -62,14 +63,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      setUser(profile);
-      setIsAuthenticated(true);
-
-      // sync user with backend
+      // sync user with backend and get backend user data
       try {
-        await syncUserWithBackend(authResult.accessToken || '', profile);
+        const backendUser = await syncUserWithBackend(authResult.accessToken || '', profile);
+        setUser(backendUser);
+        setIsAuthenticated(true);
       } catch (syncErr) {
         console.error('Failed to sync user with backend:', syncErr);
+        setError('Failed to sync user with backend');
       }
 
       setIsLoading(false);
@@ -77,12 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // sync user with backend database
-  const syncUserWithBackend = async (accessToken: string, profile: Auth0UserProfile) => {
-    const API_V2_BASE_URL = import.meta.env.VITE_API_V2_BASE_URL || 'http://localhost:8081';
-
-    // THIS NEEDS FIXING: nickname is not the same as username
-    const username = profile.nickname;
-
+  const syncUserWithBackend = useCallback(async (accessToken: string, profile: Auth0UserProfile): Promise<User> => {
     const response = await fetch(`${API_V2_BASE_URL}/v2/api/users/sync`, {
       method: 'POST',
       headers: {
@@ -91,7 +87,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
       body: JSON.stringify({
         email: profile.email || '',
-        username
+        username: profile.username || '',
+        profile_picture: profile.picture || null,
       })
     });
 
@@ -100,9 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const data = await response.json();
-    console.log('User synced with backend:', data);
-    return data;
-  };
+    return data.user;
+  }, []);
 
   // login with username and password
   const login = async (username: string, password: string): Promise<void> => {
@@ -165,8 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
 
-          // After successful signup, automatically log in with username
-          // NOTE: This triggers a redirect to Auth0's consent page on localhost
+          // after successful signup, automatically log in with username
           login(username, password)
             .then(resolve)
             .catch((loginErr) => {
@@ -179,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // logout
-  const logout = () => {
+  const logout = useCallback(() => {
     // clear local storage
     localStorage.removeItem('access_token');
     localStorage.removeItem('id_token');
@@ -195,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       returnTo: window.location.origin,
       clientID: AUTH0_CLIENT_ID
     });
-  };
+  }, [webAuth]);
 
   // check if session is still valid
   const isSessionValid = (): boolean => {
@@ -213,21 +208,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (token && idToken && isSessionValid()) {
       setAccessToken(token);
       // get user profile
-      webAuth.client.userInfo(token, (err, profile) => {
+      webAuth.client.userInfo(token, async (err, profile) => {
         if (err) {
           console.error('Failed to get user info:', err);
           logout();
           setIsLoading(false);
           return;
         }
-        setUser(profile);
-        setIsAuthenticated(true);
+
+        // sync user with backend
+        try {
+          const backendUser = await syncUserWithBackend(token, profile);
+          setUser(backendUser);
+          setIsAuthenticated(true);
+        } catch (syncErr) {
+          console.error('Failed to sync user with backend:', syncErr);
+          logout();
+        }
+
         setIsLoading(false);
       });
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [webAuth, logout, syncUserWithBackend]);
 
   return (
     <AuthContext.Provider
