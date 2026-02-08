@@ -2,6 +2,19 @@
 // Shared Types
 // =============================================================================
 
+// user type
+export interface User {
+  id: number;
+  auth0_id: string;
+  email: string;
+  username: string;
+  display_name: string;
+  profile_picture: string | null;
+  bio: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // media content types
 export const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'] as const;
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
