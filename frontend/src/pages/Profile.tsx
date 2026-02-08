@@ -9,15 +9,14 @@ import { useHistory } from 'react-router-dom';
 import { Video, Music, Calendar } from 'lucide-react';
 
 const UserProfile: React.FC = () => {
-  const { user, isLoading: authLoading, logout, getUserId } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
   const history = useHistory();
   const [homeData, setHomeData] = useState<UserHomeResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchHomeData = async () => {
-      const userId = getUserId();
-      if (!userId) return;
+      const userId = 1;
 
       try {
         setLoading(true);
@@ -32,6 +31,8 @@ const UserProfile: React.FC = () => {
 
     if (!authLoading && user) {
       fetchHomeData();
+    } else if (!authLoading) {
+      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
