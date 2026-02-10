@@ -7,7 +7,7 @@ import { Play, Pause, SkipBack, SkipForward, Users, List, ArrowLeft } from 'luci
 import { Button } from '@/components/primitives/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/primitives/sheet';
 import { useIonRouter } from '@ionic/react';
-import { SetlistTable } from '@/components/ui/setlist-table';
+import { SetlistTable } from '@/components/features/setlist-table';
 
 interface VideoWithPosition extends Video {
   positionPercent: number;

@@ -1,6 +1,6 @@
 import { useIonRouter } from '@ionic/react';
 import { PageContent } from '@/components/layout/page-content';
-import { LoginForm } from '@/components/ui/login-form';
+import { LoginForm } from '@/components/features/login-form';
 
 const Login: React.FC = () => {
   const router = useIonRouter();

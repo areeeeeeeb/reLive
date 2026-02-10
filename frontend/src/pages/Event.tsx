@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { getConcertPage, ConcertPageResponse } from '@/lib/api/concerts';
 import { Heart, Music, Play, Plus, Share, UsersRound, Video } from 'lucide-react';
 import { Button } from '@/components/primitives/button';
-import { SetlistTable } from '@/components/ui/setlist-table';
+import { SetlistTable } from '@/components/features/setlist-table';
 
 const Event: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
