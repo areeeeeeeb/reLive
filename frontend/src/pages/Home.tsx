@@ -3,7 +3,7 @@ import { IonSpinner } from '@ionic/react';
 import { useHistory } from 'react-router';
 import { useEffect, useState } from 'react';
 import { getAllConcerts, Concert } from '@/lib/api/concerts';
-import EventCard from '@/components/EventCard';
+import EventCard from '@/components/ui/event-card';
 
 const Home: React.FC = () => {
   const history = useHistory();

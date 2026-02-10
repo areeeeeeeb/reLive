@@ -4,10 +4,10 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { getConcertPage, Video, ConcertPageResponse } from '@/lib/api/concerts';
 import { IonSpinner } from '@ionic/react';
 import { Play, Pause, SkipBack, SkipForward, Users, List, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Button } from '@/components/primitives/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/primitives/sheet';
 import { useIonRouter } from '@ionic/react';
-import { SetlistTable } from '@/components/SetlistTable';
+import { SetlistTable } from '@/components/ui/setlist-table';
 
 interface VideoWithPosition extends Video {
   positionPercent: number;

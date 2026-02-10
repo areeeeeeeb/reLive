@@ -1,7 +1,7 @@
 'use client'
 
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/primitives/button"
 import { motion } from "framer-motion"
 import { PageContent } from "@/components/layout/page-content"
 import { useIonRouter } from "@ionic/react"

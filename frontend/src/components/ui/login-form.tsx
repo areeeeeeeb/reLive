@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/primitives/button';
 import {
   Field,
   FieldGroup,
   FieldLabel,
   FieldDescription
-} from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Link } from '@/components/ui/link';
+} from '@/components/primitives/field';
+import { Input } from '@/components/primitives/input';
+import { Link } from '@/components/primitives/link';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginFormProps {
