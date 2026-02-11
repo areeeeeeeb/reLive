@@ -1,21 +1,17 @@
 import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
-import { App as CapApp } from '@capacitor/app';
-import { Browser } from '@capacitor/browser';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { Route, Redirect } from 'react-router-dom';
 import Tabs from './components/layout/tabs';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { useAuth } from './contexts/AuthContext';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
 
-/* Basic CSS for apps built with Ionic */
-import '@ionic/react/css/normalize.css';
+// import '@ionic/react/css/normalize.css';  // commented out to prevent global button/input/form resets
 import '@ionic/react/css/structure.css';
 import '@ionic/react/css/typography.css';
 
@@ -36,19 +32,8 @@ import './theme/tailwind.css';
 setupIonicReact();
 
 const App: React.FC = () => {
-  // get Auth0 authentication state and callback handler
-  const { isAuthenticated, isLoading, handleRedirectCallback } = useAuth0();
-
-  useEffect(() => {
-    // handle the 'appUrlOpen' event and call `handleRedirectCallback`
-    CapApp.addListener('appUrlOpen', async ({ url }) => {
-      if (url.includes('state') && (url.includes('code') || url.includes('error'))) {
-        await handleRedirectCallback(url);
-      }
-      // no-op on Android
-      await Browser.close();
-    });
-  }, [handleRedirectCallback]);
+  // get Auth0 authentication state
+  const { isAuthenticated, isLoading } = useAuth();
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -62,7 +47,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="dark">
       <IonApp>
         <IonReactRouter>
         {isAuthenticated ? (

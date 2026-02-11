@@ -1,0 +1,10 @@
+.*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+tmp/
+vendor/
+bin/
+# Environment
+.env

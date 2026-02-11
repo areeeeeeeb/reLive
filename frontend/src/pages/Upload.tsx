@@ -9,7 +9,6 @@ import { UserVideo } from '@/hooks/useVideoGallery';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { uploadVideo, UploadVideoResponse, updateVideoSong } from '@/lib/api/videos';
 import { Spinner } from '@/components/ui/spinner';
-import { useAuth } from '@/hooks/useAuth';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { getConcertSetlist, Song } from '@/lib/api/concerts';
 import { SetlistTable } from '@/components/SetlistTable';
@@ -21,7 +20,6 @@ interface UploadedVideoData extends UserVideo {
 const Upload: React.FC = () => {
   const { eventId } = useParams<{ eventId?: string }>();
   const router = useIonRouter();
-  const { getUserId } = useAuth();
   const videoUploadRef = useRef<VideoUploadCardRef>(null);
   const hasProcessedPendingRef = useRef(false);
   const [showSheet, setShowSheet] = useState(false);
@@ -118,7 +116,7 @@ const Upload: React.FC = () => {
             title: video.filename.replace(/\.[^/.]+$/, ''), // Remove extension from filename
             description: '',
           },
-          getUserId() || 1, // Get userId from auth context, fallback to 1
+          1, // Get userId from auth context, fallback to 1
           (progress) => {
             console.log(`Uploading video ${i + 1}/${videos.length}: ${progress}%`);
           }

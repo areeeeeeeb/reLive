@@ -1,20 +1,19 @@
-import { IonButton } from '@ionic/react';
-import { useAuth } from '../hooks/useAuth';
+import { useIonRouter } from '@ionic/react';
 import { PageContent } from '@/components/layout/page-content';
+import { LoginForm } from '@/components/ui/login-form';
 
 const Login: React.FC = () => {
-  const { login } = useAuth();
+  const router = useIonRouter();
+
+  const handleLoginSuccess = () => {
+    // redirect to profile or home page after successful login
+    router.push('/profile', 'root', 'replace');
+  };
 
   return (
-    <PageContent title='login'>
-      <div>
-        <h2>Welcome to reLive</h2>
-        <p>Sign in to continue</p>
-        <div>
-          <IonButton onClick={login}>
-            Log in
-          </IonButton>
-        </div>
+    <PageContent title='login' className='flex items-center' hideMobileHeader>
+      <div className="max-w-md w-full mx-auto h-fit ">
+        <LoginForm onSuccess={handleLoginSuccess} />
       </div>
     </PageContent>
   );

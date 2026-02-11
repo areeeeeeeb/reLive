@@ -2,12 +2,12 @@
 
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/hooks/useAuth"
 import { motion } from "framer-motion"
 import { PageContent } from "@/components/layout/page-content"
+import { useIonRouter } from "@ionic/react"
 
 const Landing: React.FC = () => {
-  const { login } = useAuth();
+  const router = useIonRouter()
 
   return (
     <PageContent title="welcome" noPadding hideMobileHeader>
@@ -64,7 +64,7 @@ const Landing: React.FC = () => {
           className="mt-8"
         >
           <Button
-            onClick={login}
+            onClick={() => router.push('/login')}
             className="bg-chartreuse hover:bg-chartreuse/90 text-black font-bold text-lg px-6 py-4 sm:px-8 sm:py-6 rounded-full uppercase tracking-wide"
           >
             JUMP IN!
