@@ -30,6 +30,6 @@ npx cap open ios
 
 designed by [Areeb Rasul](https://areeb.world/)
 
-developed by [Areeb Rasul](https://areeb.world/) & [Aarush Ghosh](https://aarush-portfolio.vercel.app/)
+developed by [Areeb Rasul](https://areeb.world/) & [Aarush Ghosh](https://aarush-portfolio.vercel.app/) & Tim Kang
 
 built with [React](https://react.dev/), [Capacitor](https://capacitorjs.com/), [Express.js](https://expressjs.com/), [PostgreSQL](https://www.postgresql.org/) & [DigitalOcean](https://www.digitalocean.com)
