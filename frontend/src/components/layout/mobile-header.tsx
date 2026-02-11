@@ -1,6 +1,6 @@
 import { IonToolbar, IonHeader, IonTitle } from '@ionic/react';
 import { cn, getTailwindColorValue } from '@/lib/utils';
-import { BackButton } from '../ui/back-button';
+import { BackButton } from '../features/back-button';
 import { Capacitor } from '@capacitor/core';
 import { QuestionIcon } from '@phosphor-icons/react';
 

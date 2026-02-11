@@ -1,5 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
-
 interface EventCardProps {
   title: string;
   date: string;

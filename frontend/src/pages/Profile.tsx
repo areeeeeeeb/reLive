@@ -3,8 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PageContent } from '@/components/layout/page-content';
 import { useEffect, useState } from 'react';
 import { getUserHome, UserHomeResponse } from '@/lib/api/users';
-import EventCard from '@/components/EventCard';
-import { Button } from '@/components/ui/button';
+import EventCard from '@/components/features/event-card';
+import { Button } from '@/components/primitives/button';
 import { useHistory } from 'react-router-dom';
 import { Video, Music, Calendar } from 'lucide-react';
 

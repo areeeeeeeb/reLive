@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/primitives/button';
 import {
   Field,
   FieldGroup,
   FieldLabel,
-} from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+} from '@/components/primitives/field';
+import { Input } from '@/components/primitives/input';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface SignupFormProps {

@@ -1,6 +1,6 @@
 import { useIonRouter } from '@ionic/react';
 import { PageContent } from '@/components/layout/page-content';
-import { SignupForm } from '@/components/ui/signup-form';
+import { SignupForm } from '@/components/features/signup-form';
 
 const Signup: React.FC = () => {
   const router = useIonRouter();

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Play } from "lucide-react";
 import { useVideoGallery, UserVideo } from "@/hooks/useVideoGallery";
-import { Spinner } from "@/components/ui/spinner";
+import { Spinner } from "@/components/primitives/spinner";
 
 interface VideoUploadCardProps {
   className?: string;

@@ -2,16 +2,16 @@ import { useParams } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useIonRouter, isPlatform } from '@ionic/react';
 import { PageContent } from '@/components/layout/page-content';
-import { VideoUploadCard, VideoUploadCardRef } from '@/components/ui/video-upload-card';
+import { VideoUploadCard, VideoUploadCardRef } from '@/components/features/video-upload-card';
 import { getPendingFiles, clearPendingFiles, hasPendingFiles, getShouldClearVideos, resetShouldClearVideos } from '@/lib/uploadQueue';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/primitives/button';
 import { UserVideo } from '@/hooks/useVideoGallery';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/primitives/sheet';
 import { uploadVideo, UploadVideoResponse, updateVideoSong } from '@/lib/api/videos';
-import { Spinner } from '@/components/ui/spinner';
+import { Spinner } from '@/components/primitives/spinner';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { getConcertSetlist, Song } from '@/lib/api/concerts';
-import { SetlistTable } from '@/components/SetlistTable';
+import { SetlistTable } from '@/components/features/setlist-table';
 
 interface UploadedVideoData extends UserVideo {
   uploadResponse?: UploadVideoResponse;
