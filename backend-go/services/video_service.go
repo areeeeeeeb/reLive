@@ -109,3 +109,13 @@ func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID in
 
 	return nil
 }
+
+// SetConcert links a video to a concert
+func (s *VideoService) SetConcert(ctx context.Context, videoID int, concertID int) error {
+	return s.store.SetVideoConcert(ctx, videoID, concertID)
+}
+
+// SetSong links a video to a song
+func (s *VideoService) SetSong(ctx context.Context, videoID int, songID int) error {
+	return s.store.SetVideoSong(ctx, videoID, songID)
+}

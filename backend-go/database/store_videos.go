@@ -98,3 +98,20 @@ func (s *Store) UpdateVideoStatus(ctx context.Context, videoID int, status strin
 
 	return scanVideo(s.pool.QueryRow(ctx, q, status, videoID))
 }
+
+// SetVideoConcert links a video to a concert via event_type + event_id
+func (s *Store) SetVideoConcert(ctx context.Context, videoID int, concertID int) error {
+	const q = `
+	UPDATE videos
+	SET event_type = $1, event_id = $2, updated_at = NOW()
+	WHERE id = $3`
+
+	_, err := s.pool.Exec(ctx, q, models.EventTypeConcert, concertID, videoID)
+	return err
+}
+
+// SetVideoSong links a video to a song
+// TODO: add song_id column to videos table
+func (s *Store) SetVideoSong(ctx context.Context, videoID int, songID int) error {
+	return nil
+}

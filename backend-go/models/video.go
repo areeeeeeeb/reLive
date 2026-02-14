@@ -43,7 +43,11 @@ const (
 
 const (
 	VideoVisibilityPrivate = "private"
-	VideoVisibilityPublic = "public"
+	VideoVisibilityPublic  = "public"
+)
+
+const (
+	EventTypeConcert = "concert"
 )
 
 // VideoMetadata extracted from video file

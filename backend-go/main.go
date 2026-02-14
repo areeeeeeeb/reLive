@@ -47,7 +47,11 @@ func main() {
 	// add service structs here
 	userService := services.NewUserService(store)
 	videoService := services.NewVideoService(store, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
-
+	// mediaService, err := services.NewMediaService()
+	// if err != nil {
+	// 	log.Fatalf("Failed to create media service %v", err)
+	// }
+	
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
