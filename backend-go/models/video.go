@@ -15,10 +15,10 @@ type Video struct {
 	Status       string     `db:"status" json:"status"`
 	Visibility   string     `db:"visibility" json:"visibility"`
 
-	EventType    *string    `db:"event_type" json:"event_type"`
-	EventID      *int       `db:"event_id" json:"event_id"`
-	ActID        *int       `db:"act_id" json:"act_id,omitempty"`
-	SongID       *int       `db:"song_id" json:"song_id,omitempty"`
+	EventType           *string `db:"event_type" json:"event_type"`
+	EventID             *int    `db:"event_id" json:"event_id"`
+	ActID               *int    `db:"act_id" json:"act_id,omitempty"`
+	SongPerformanceID   *int    `db:"song_performance_id" json:"song_performance_id,omitempty"`
 
 	// metadata (extracted or client-provided)
 	Duration     *float64   `db:"duration" json:"duration"`  // Nullable (in seconds)
