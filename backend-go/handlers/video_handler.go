@@ -34,7 +34,11 @@ func (h *VideoHandler) UploadInit(c *gin.Context) {
 		return
 	}
 
-	userID := int(1) // TEMP: get from auth middleware later
+	userID := c.GetInt("user_id")
+	if userID == 0 {
+		c.JSON(401, gin.H{"error": "user not found"})
+		return
+	}
 
 	result, err := h.videoService.InitUpload(
 		c.Request.Context(),
