@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/jackc/pgx/v5"
@@ -113,5 +114,5 @@ func (s *Store) SetVideoConcert(ctx context.Context, videoID int, concertID int)
 // SetVideoSong links a video to a song
 // TODO: add song_id column to videos table
 func (s *Store) SetVideoSong(ctx context.Context, videoID int, songID int) error {
-	return nil
+	return fmt.Errorf("not implemented")
 }
