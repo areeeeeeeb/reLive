@@ -5,11 +5,11 @@ import "time"
 // Song represents a musical track/composition.
 //
 // ArtistID refers to the original/credited artist (songwriter or recording
-// artist), NOT the performer at a specific concert. Performance context comes
-// from the Act that the video is linked to:
+// artist), NOT the performer at a specific concert. Performance context is
+// modeled through SongPerformance that the video is linked to.
 //
-//	video -> act -> artist = who performed it
-//	video -> song -> artist = who wrote/recorded it
+//	video -> song_performance -> song -> artist = who wrote/recorded it
+//	video -> song_performance -> act  -> artist = who performed it
 //
 // therefore when song.artist_id != act.artist_id, it's a cover
 type Song struct {
