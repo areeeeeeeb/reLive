@@ -4,12 +4,17 @@ import type {
   PhotoLibraryAsset,
 } from '@capgo/capacitor-photo-library';
 import { Capacitor } from '@capacitor/core';
+import {
+  ALLOWED_VIDEO_FILE_EXTENSIONS,
+  ALLOWED_IMAGE_FILE_EXTENSIONS,
+} from './types';
 
 /**
  * unified media selection result
+ * both web and native use lightweight references that can be converted to File objects when needed
  */
 export type MediaSelection =
-  | { source: 'web'; files: File[] }
+  | { source: 'web'; handles: FileSystemFileHandle[] }
   | { source: 'native'; assets: PhotoLibraryAsset[] };
 
 /**
@@ -33,13 +38,11 @@ export async function selectMedia(options?: {
   selectionLimit?: number;
   includeVideos?: boolean;
   includeImages?: boolean;
-  accept?: string;
 }): Promise<MediaSelection> {
   const {
-    selectionLimit = 10,
+    selectionLimit = undefined,
     includeVideos = true,
     includeImages = false,
-    accept = 'video/*',
   } = options || {};
 
   const isNative = Capacitor.isNativePlatform();
@@ -54,66 +57,57 @@ export async function selectMedia(options?: {
     });
     return { source: 'native', assets: selection.assets };
   } else {
-    // web: use file input
-    return new Promise<MediaSelection>((resolve, reject) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = accept;
-      input.multiple = selectionLimit !== 1;
-      input.style.display = 'none';
+    // web: use file system
+    try {
+      // file system access API expects file extensions
+      const accept: Record<string, string[]> = {};
+      if (includeVideos) accept['video/*'] = ALLOWED_VIDEO_FILE_EXTENSIONS;
+      if (includeImages) accept['image/*'] = ALLOWED_IMAGE_FILE_EXTENSIONS;
 
-      const cleanup = () => {
-        document.body.removeChild(input);
+      const pickerOpts: any = {
+        types: [{ accept }],
+        multiple: selectionLimit !== 1,
       };
 
-      input.addEventListener('change', () => {
-        const files = input.files;
-        if (files && files.length > 0) {
-          const fileArray = Array.from(files).slice(0, selectionLimit || files.length);
-          resolve({ source: 'web', files: fileArray });
-        } else {
-          reject(new Error('No files selected'));
-        }
-        cleanup();
-      });
+      const handles = await (window as any).showOpenFilePicker(pickerOpts);
+      const limitedHandles = handles.slice(0, selectionLimit || handles.length);
 
-      input.addEventListener('cancel', () => {
-        reject(new Error('User cancelled file selection'));
-        cleanup();
-      });
-
-      // Attach to DOM (required for some browsers)
-      document.body.appendChild(input);
-      input.click();
-    });
+      return { source: 'web', handles: limitedHandles };
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        throw new Error('User cancelled file selection');
+      }
+      throw error;
+    }
   }
 }
 
 
 /**
- * Convert a PhotoLibraryAsset to a File object
- * Useful for legacy upload systems that expect File objects
- * @deprecated Use PhotoLibraryAsset directly in new upload system
+ * convert a media selection item to a File object
  */
-export async function assetToFile(asset: PhotoLibraryAsset): Promise<File | null> {
-  if (!asset.file) return null;
+export async function mediaSelectionToFile(
+  item: FileSystemFileHandle | PhotoLibraryAsset
+): Promise<File | null> {
+  // web: FileSystemFileHandle
+  if ('getFile' in item) return await item.getFile();
+
+  // native: PhotoLibraryAsset
+  if (!item.file) return null;
 
   try {
-    // Get the file path (prefer webPath for web compatibility)
-    const filePath = asset.file.webPath || Capacitor.convertFileSrc(asset.file.path);
-
-    // Fetch the file as a blob
+    // get the file path
+    const filePath = Capacitor.convertFileSrc(item.file.path);
+    // fetch the file as a blob
     const response = await fetch(filePath);
     const blob = await response.blob();
-
-    // Create a File object with proper name and type
-    const file = new File([blob], asset.fileName || `media-${asset.id}`, {
-      type: asset.mimeType || blob.type,
+    // create a file object with proper name and type
+    const file = new File([blob], item.fileName, {
+      type: item.mimeType || blob.type,
     });
-
     return file;
   } catch (error) {
-    console.error(`Failed to load asset ${asset.id}:`, error);
+    console.error(`Failed to load asset ${item.id}:`, error);
     return null;
   }
 }
