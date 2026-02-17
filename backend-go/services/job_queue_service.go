@@ -7,21 +7,22 @@ import (
 
 	"github.com/areeeeeeeb/reLive/backend-go/config"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/areeeeeeeb/reLive/backend-go/workers"
 )
 
 // JobQueueService manages background video processing via worker pool + scheduler.
 type JobQueueService struct {
-	store     *database.Store
-	pool      *workers.Pool
-	scheduler *workers.Scheduler
+	store      *database.Store
+	processing *ProcessingService
+	pool       *workers.Pool
+	scheduler  *workers.Scheduler
 }
 
-func NewJobQueueService(store *database.Store, cfg config.ConcurrencyConfig) *JobQueueService {
+func NewJobQueueService(store *database.Store, processing *ProcessingService, cfg config.ConcurrencyConfig) *JobQueueService {
 	jq := &JobQueueService{
-		store: store,
-		pool:  workers.NewPool("video-processing", cfg.Concurrency, cfg.QueueSize),
+		store:      store,
+		processing: processing,
+		pool:       workers.NewPool("video-processing", cfg.Concurrency, cfg.QueueSize),
 	}
 
 	jq.scheduler = workers.NewScheduler("video", jq.pool, jq.fetch, time.Duration(cfg.Interval)*time.Second)
@@ -52,15 +53,10 @@ func (jq *JobQueueService) fetch(ctx context.Context, limit int) ([]workers.Job,
 	for i, v := range videos {
 		v := v
 		jobs[i] = func(ctx context.Context) error {
-			return jq.process(ctx, v)
+			return jq.processing.Process(ctx, v)
 		}
 	}
 	return jobs, nil
 }
 
-// process handles a single video. TODO: replace with full pipeline.
-func (jq *JobQueueService) process(ctx context.Context, video *models.Video) error {
-	log.Printf("[processing] video %d claimed, pipeline not implemented yet", video.ID)
-	_, err := jq.store.UpdateVideoStatus(ctx, video.ID, models.VideoStatusCompleted)
-	return err
-}
+

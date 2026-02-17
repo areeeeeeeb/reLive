@@ -60,8 +60,9 @@ func main() {
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
 
-	// Job queue for concurrent background processing 
-	jobQueue := services.NewJobQueueService(store, cfg.Concurrency)
+	// Job queue for concurrent background processing
+	processingService := services.NewProcessingService(store)
+	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency)
 	jobQueue.Start(ctx)
 
 
