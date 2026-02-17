@@ -1,0 +1,18 @@
+diff --git a/node_modules/@capgo/capacitor-photo-library/ios/Sources/PhotoLibraryPlugin/PhotoLibrary.swift b/node_modules/@capgo/capacitor-photo-library/ios/Sources/PhotoLibraryPlugin/PhotoLibrary.swift
+index 36325b6..f1d2dd1 100644
+--- a/node_modules/@capgo/capacitor-photo-library/ios/Sources/PhotoLibraryPlugin/PhotoLibrary.swift
++++ b/node_modules/@capgo/capacitor-photo-library/ios/Sources/PhotoLibraryPlugin/PhotoLibrary.swift
+@@ -562,10 +562,9 @@ final class PhotoLibraryService {
+                     completion(nil)
+                     return
+                 }
+-                self.queue.async {
+-                    let asset = self.createAssetFromPickedVideo(tempURL: url, identifier: identifier, suggestedName: provider.suggestedName, options: options)
+-                    completion(asset)
+-                }
++                // FIX: Must copy file synchronously before callback returns, otherwise iOS deletes the temp file
++                let asset = self.createAssetFromPickedVideo(tempURL: url, identifier: identifier, suggestedName: provider.suggestedName, options: options)
++                completion(asset)
+             }
+             return
+         }
