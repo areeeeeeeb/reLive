@@ -65,6 +65,19 @@ func scanVideo(row pgx.Row) (*models.Video, error) {
 	return &v, nil
 }
 
+func scanVideos(rows pgx.Rows) ([]*models.Video, error) {
+	defer rows.Close()
+	var videos []*models.Video
+	for rows.Next() {
+		v, err := scanVideo(rows)
+		if err != nil {
+			return nil, err
+		}
+		videos = append(videos, v)
+	}
+	return videos, rows.Err()
+}
+
 
 // CreateVideo inserts a new video record with pending_upload status
 func (s *Store) CreateVideo(ctx context.Context, userID int, filename, s3Key, videoURL string) (*models.Video, error) {
@@ -119,4 +132,58 @@ func (s *Store) SetVideoConcert(ctx context.Context, videoID int, concertID int)
 // TODO: add song_id column to videos table
 func (s *Store) SetVideoSong(ctx context.Context, videoID int, songID int) error {
 	return fmt.Errorf("not implemented")
+}
+
+// ClaimQueuedVideos atomically claims up to `limit` queued videos for processing.
+// FOR UPDATE SKIP LOCKED prevents double-claiming across concurrent workers/instances.
+func (s *Store) ClaimQueuedVideos(ctx context.Context, limit int) ([]*models.Video, error) {
+	const q = `
+	UPDATE videos SET status = $1, updated_at = NOW()
+	WHERE id IN (
+		SELECT id FROM videos
+		WHERE status = $2 AND deleted_at IS NULL
+		ORDER BY created_at
+		LIMIT $3
+		FOR UPDATE SKIP LOCKED
+	)
+	RETURNING ` + videoCols
+
+	rows, err := s.pool.Query(ctx, q,
+		models.VideoStatusProcessing,
+		models.VideoStatusQueued,
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return scanVideos(rows)
+}
+
+// UpdateVideoMetadata updates the extracted/fallback metadata fields for a video
+func (s *Store) UpdateVideoMetadata(ctx context.Context, videoID int, meta models.VideoMetadata) error {
+	const q = `
+	UPDATE videos
+	SET duration = $1, latitude = $2, longitude = $3, recorded_at = $4,
+	    width = $5, height = $6, updated_at = NOW()
+	WHERE id = $7`
+
+	_, err := s.pool.Exec(ctx, q,
+		meta.Duration,
+		meta.GPS.Latitude,
+		meta.GPS.Longitude,
+		meta.Timestamp,
+		meta.Width,
+		meta.Height,
+		videoID,
+	)
+	return err
+}
+
+// ResetStuckProcessingVideos resets videos that were marked as processing but may have been left in that state due to a crash or error.
+func (s *Store) ResetStuckProcessingVideos(ctx context.Context) error {
+	const q = `
+	UPDATE videos SET status = $1, updated_at = NOW()
+	WHERE status = $2 AND deleted_at IS NULL`
+	_, err := s.pool.Exec(ctx, q, models.VideoStatusQueued, models.VideoStatusProcessing)
+	return err
 }

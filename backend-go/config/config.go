@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -13,6 +14,8 @@ type Config struct {
 
 	Auth0  Auth0Config
 	Spaces SpacesConfig
+	Concurrency ConcurrencyConfig
+
 }
 
 type Auth0Config struct {
@@ -29,6 +32,12 @@ type SpacesConfig struct {
 	CdnURL    string
 }
 
+type ConcurrencyConfig struct {
+	Concurrency int
+	QueueSize   int
+	Interval    int // seconds
+}
+
 func Load() *Config {
 	godotenv.Load()
 
@@ -36,6 +45,12 @@ func Load() *Config {
 		Port:        getEnv("PORT", "8081"),
 		Environment: getEnv("ENVIRONMENT", "development"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
+		
+		Concurrency: ConcurrencyConfig{
+			Concurrency: getEnvInt("POOL_CONCURRENCY", 20),
+			QueueSize:   getEnvInt("POOL_QUEUE_SIZE", 50),
+			Interval:    getEnvInt("POLL_INTERVAL_SECONDS", 10),
+		},
 
 		Auth0: Auth0Config{
 			Domain:   getEnv("AUTH0_DOMAIN", ""),
@@ -59,3 +74,16 @@ func getEnv(key, defaultValue string) string {
 	}
 	return defaultValue
 }
+
+func getEnvInt(key string, defaultValue int) int {
+	s := getEnv(key, "")
+	if s == "" {
+		return defaultValue
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultValue
+	}
+	return v
+}
+

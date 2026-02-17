@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/areeeeeeeb/reLive/backend-go/config"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
@@ -15,7 +18,8 @@ import (
 
 func main() {
 	// Create Gin router
-	ctx := context.Background()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
 	cfg := config.Load()
 
@@ -55,6 +59,11 @@ func main() {
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
+
+	// Job queue for concurrent background processing 
+	jobQueue := services.NewJobQueueService(store, cfg.Concurrency)
+	jobQueue.Start(ctx)
+
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {
