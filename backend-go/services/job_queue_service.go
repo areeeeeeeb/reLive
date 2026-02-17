@@ -7,6 +7,7 @@ import (
 
 	"github.com/areeeeeeeb/reLive/backend-go/config"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
+	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/areeeeeeeb/reLive/backend-go/workers"
 )
 
@@ -53,7 +54,11 @@ func (jq *JobQueueService) fetch(ctx context.Context, limit int) ([]workers.Job,
 	for i, v := range videos {
 		v := v
 		jobs[i] = func(ctx context.Context) error {
-			return jq.processing.Process(ctx, v)
+			if err := jq.processing.Process(ctx, v); err != nil {
+				jq.store.UpdateVideoStatus(ctx, v.ID, models.VideoStatusFailed)
+				return err
+			}
+			return nil // if processing succeeds, video status will be updated to "processed" in the DB by the processing service, so we don't need to do anything here
 		}
 	}
 	return jobs, nil

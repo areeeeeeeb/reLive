@@ -3,9 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/areeeeeeeb/reLive/backend-go/config"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
@@ -18,22 +15,21 @@ import (
 
 func main() {
 	// Create Gin router
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-
+	ctx := context.Background()
+	// Load configuration from environment variables
 	cfg := config.Load()
-
+	// Connect to database
 	pool, err := cfg.NewDBPool(ctx)
 	if err != nil {
 		log.Fatalf("Failed to connect to database %v", err)
 	}
 	defer pool.Close()
-
+	// Connect to S3
 	s3Client, err := cfg.NewS3Client(ctx)
 	if err != nil {
 		log.Fatalf("Failed to connect to s3 %v", err)
 	}
-
+	// Create Gin router
 	r := gin.Default()
 
 	// CORS middleware
@@ -56,11 +52,12 @@ func main() {
 	// 	log.Fatalf("Failed to create media service %v", err)
 	// }
 	
+
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
 
-	// Job queue for concurrent background processing
+	// start job queue for background processing
 	processingService := services.NewProcessingService(store)
 	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency)
 	jobQueue.Start(ctx)
