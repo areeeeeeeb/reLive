@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/primitives/card';
-import { Progress } from '@/components/primatives/progress';
+import { Progress } from '@/components/primitives/progress';
 import type { QueuedMedia } from '@/lib/media/queue';
 import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@phosphor-icons/react';
 
