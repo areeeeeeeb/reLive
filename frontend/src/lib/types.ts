@@ -51,3 +51,22 @@ export function isImageType(type: string): type is ImageContentType {
 export function isAllowedMediaType(type: string): type is MediaContentType {
   return (ALLOWED_MEDIA_TYPES as readonly string[]).includes(type);
 }
+
+// helpers
+export function getMimeTypeFromExtension(filename: string): MediaContentType | null {
+  const ext = filename.toLowerCase().match(/\.[^.]+$/)?.[0];
+  if (!ext) return null;
+  // check video extensions
+  for (const [mimeType, extensions] of Object.entries(VIDEO_EXTENSIONS_MAP)) {
+    if (extensions.includes(ext)) {
+      return mimeType as VideoContentType;
+    }
+  }
+  // check image extensions
+  for (const [mimeType, extensions] of Object.entries(IMAGE_EXTENSIONS_MAP)) {
+    if (extensions.includes(ext)) {
+      return mimeType as ImageContentType;
+    }
+  }
+  return null;
+}

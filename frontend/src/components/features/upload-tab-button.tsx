@@ -1,8 +1,16 @@
 import { PlusCircleIcon } from '@phosphor-icons/react';
-import { setPendingMedia } from '@/lib/uploadQueue';
-import { selectMedia } from '@/lib/mediaSelection';
+import { addToQueue, clearQueue } from '@/lib/media/queue';
+import { selectMedia } from '@/lib/media/selection';
 import TabButton from '../primitives/tab-button';
-import { useIonRouter } from '@ionic/react';
+import { useIonRouter, createAnimation } from '@ionic/react';
+
+const delayedFade = (baseEl: HTMLElement) => {
+  return createAnimation()
+    .addElement(baseEl)
+    .delay(300)
+    .duration(300)
+    .fromTo('opacity', '1', '0');
+};
 
 export default function UploadTabButton() {
   const router = useIonRouter();
@@ -12,14 +20,16 @@ export default function UploadTabButton() {
     e.stopPropagation();
 
     try {
+      clearQueue();
+      router.push('/upload', 'forward', 'push', undefined, delayedFade);
       const selection = await selectMedia({
-        selectionLimit: undefined,
+        selectionLimit: 10,
         includeVideos: true,
         includeImages: true,
       });
-      setPendingMedia(selection);
-      router.push('/upload', 'none');
+      await addToQueue(selection);
     } catch (error) {
+      router.goBack();
       console.error('Failed to select media:', error);
       // user cancelled or error occurred
     }

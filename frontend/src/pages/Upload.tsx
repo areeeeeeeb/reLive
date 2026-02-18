@@ -1,76 +1,97 @@
 import { useEffect, useState } from 'react';
 import { PageContent } from '@/components/layout/page-content';
-import { subscribeToPendingMedia, clearPendingMedia } from '@/lib/uploadQueue';
-import { MediaSelection } from '@/lib/mediaSelection';
+import { subscribeToQueue, clearQueueAndDeleteUploads, type QueuedMedia } from '@/lib/media/queue';
+import { MobileStepNavigation } from '@/components/features/mobile-step-navigation';
+import { useIonRouter } from '@ionic/react';
+import { processUploads } from '@/lib/media/upload';
+import { QueuedMediaCard } from '@/components/features/queued-media-card';
+import MediaStack from '@/components/features/media-stack';
 
 const Upload: React.FC = () => {
-  const [pendingMedia, setPendingMedia] = useState<MediaSelection | null>(null);
+  const [queuedItems, setQueuedItems] = useState<QueuedMedia[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const router = useIonRouter();
 
   useEffect(() => {
-    // subscribe to pending media changes
-    const unsubscribe = subscribeToPendingMedia((media) => {
-      setPendingMedia(media);
+    // subscribe to queue changes
+    const unsubscribe = subscribeToQueue((queue) => {
+      setQueuedItems(queue);
+      // reset to step 1 when new items are queued
+      if (queue.length > 0 && currentStep === 0) {
+        setCurrentStep(1);
+      }
     });
-    // cleanup subscription on unmount
-    return unsubscribe;
-  }, []);
+    // cleanup subscription
+    return () => {
+      unsubscribe();
+    };
+  }, [currentStep]);
 
-  const handleClear = () => {
-    clearPendingMedia();
-  };
-
-  const getMediaCount = () => {
-    if (!pendingMedia) return 0;
-    return pendingMedia.source === 'web'
-      ? pendingMedia.handles.length
-      : pendingMedia.assets.length;
-  };
-
-  const renderMediaItems = () => {
-    if (!pendingMedia) return null;
-
-    if (pendingMedia.source === 'web') {
-      return pendingMedia.handles.map((handle, index) => (
-        <div key={index} className="p-4 border rounded-lg">
-          <p className="font-medium">{handle.name}</p>
-          <p className="text-sm text-muted-foreground">Web File Handle</p>
-        </div>
-      ));
+  const handleNext = async () => {
+    if (currentStep === 1 && queuedItems.length > 0) {
+      // step 1 -> step 2: start uploading
+      setIsUploading(true);
+      setCurrentStep(2);
+      try {
+        await processUploads(queuedItems);
+        setIsUploading(false);
+      } catch (error) {
+        setIsUploading(false);
+        console.error('Upload error:', error);
+      }
     } else {
-      return pendingMedia.assets.map((asset, index) => (
-        <div key={index} className="p-4 border rounded-lg">
-          <p className="font-medium">{asset.fileName}</p>
-          <p className="text-sm text-muted-foreground">{asset.mimeType}</p>
-          <p className="text-sm text-muted-foreground">Asset ID: {asset.id}</p>
-        </div>
-      ));
+      setCurrentStep(prev => Math.min(prev + 1, 3));
     }
   };
 
-  return (
-    <PageContent title="upload" hideMobileHeader>
-      <div className="p-8">
-        <h2 className="text-2xl font-bold mb-4">Pending Media</h2>
+  const handleBack = async () => {
+    // prevent going back while uploading
+    if (isUploading) return;
+    // if going back from first step, clear queue and delete any uploaded videos
+    if (currentStep === 1) {
+      await clearQueueAndDeleteUploads();
+      router.goBack();
+    }
+    setCurrentStep(prev => Math.max(prev - 1, 0));
+  };
 
-        {!pendingMedia ? (
-          <p className="text-muted-foreground">No pending media</p>
-        ) : (
-          <>
-            <p className="mb-4">
-              Found {getMediaCount()} {pendingMedia.source} file(s)
-            </p>
-            <div className="flex flex-col gap-4">
-              {renderMediaItems()}
-            </div>
-            <button
-              onClick={handleClear}
-              className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg"
-            >
-              Clear Pending Media
-            </button>
-          </>
-        )}
-      </div>
+  // TODO: smooth step transitions
+  const renderStep = () => {
+    if (queuedItems.length === 0) return <div />;
+    switch (currentStep) {
+      case 1:
+        const mediaSelection = queuedItems.map(item => item.media);
+        return <MediaStack mediaSelection={mediaSelection} />;
+      case 2:
+        return (
+          <div className="p-6 space-y-4">
+            {queuedItems.map((item) => (
+              <QueuedMediaCard key={item.id} item={item} />
+            ))}
+          </div>
+        );
+      case 3:
+        return <div className="p-6">Step 3: Review & Upload</div>;
+      default:
+        return <div />;
+    }
+  };
+
+  const allUploadsComplete = queuedItems.length > 0 && queuedItems.every(u => u.status === 'completed');
+
+  return (
+    <PageContent title="upload" hideMobileHeader refreshable={false}>
+      {renderStep()}
+      {queuedItems.length > 0 && (
+        <MobileStepNavigation
+          step={currentStep}
+          maxStep={3}
+          canProceed={currentStep === 1 || (currentStep === 2 && allUploadsComplete && !isUploading)}
+          onBack={handleBack}
+          onNext={handleNext}
+        />
+      )}
     </PageContent>
   );
 };

@@ -7,15 +7,16 @@ import { Capacitor } from '@capacitor/core';
 import {
   ALLOWED_VIDEO_FILE_EXTENSIONS,
   ALLOWED_IMAGE_FILE_EXTENSIONS,
-} from './types';
+} from '../types';
 
 /**
  * unified media selection result
  * both web and native use lightweight references that can be converted to File objects when needed
  */
-export type MediaSelection =
-  | { source: 'web'; handles: FileSystemFileHandle[] }
-  | { source: 'native'; assets: PhotoLibraryAsset[] };
+export type MediaItem =
+  | { source: 'web'; handle: FileSystemFileHandle }
+  | { source: 'native'; asset: PhotoLibraryAsset };
+export type MediaSelection = MediaItem[];
 
 /**
  * request authorization to access the photo library (native only)
@@ -53,9 +54,18 @@ export async function selectMedia(options?: {
     const selection = await PhotoLibrary.pickMedia({
       selectionLimit,
       includeVideos,
-      includeImages,
+      includeImages
     });
-    return { source: 'native', assets: selection.assets };
+
+    // filter out any assets that failed to persist
+    const validAssets = selection.assets.filter(asset => asset.file || asset.thumbnail);
+
+    // if no valid assets, user likely cancelled
+    if (validAssets.length === 0) {
+      throw new Error('User cancelled media selection');
+    }
+
+    return validAssets.map(asset => ({ source: 'native' as const, asset }));
   } else {
     // web: use file system
     try {
@@ -72,7 +82,7 @@ export async function selectMedia(options?: {
       const handles = await (window as any).showOpenFilePicker(pickerOpts);
       const limitedHandles = handles.slice(0, selectionLimit || handles.length);
 
-      return { source: 'web', handles: limitedHandles };
+      return limitedHandles.map((handle: FileSystemFileHandle) => ({ source: 'web' as const, handle }));
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         throw new Error('User cancelled file selection');
@@ -84,30 +94,51 @@ export async function selectMedia(options?: {
 
 
 /**
- * convert a media selection item to a File object
+ * convert a media item to a File object
  */
-export async function mediaSelectionToFile(
-  item: FileSystemFileHandle | PhotoLibraryAsset
+export async function mediaItemToFile(
+  item: MediaItem
 ): Promise<File | null> {
   // web: FileSystemFileHandle
-  if ('getFile' in item) return await item.getFile();
+  if (item.source === 'web') {
+    return await item.handle.getFile();
+  }
 
   // native: PhotoLibraryAsset
-  if (!item.file) return null;
+  if (!item.asset.file) return null;
 
   try {
-    // get the file path
-    const filePath = Capacitor.convertFileSrc(item.file.path);
-    // fetch the file as a blob
-    const response = await fetch(filePath);
+    // PhotoLibraryFile already has webPath which is Capacitor.convertFileSrc(path)
+    const response = await fetch(item.asset.file.webPath);
     const blob = await response.blob();
-    // create a file object with proper name and type
-    const file = new File([blob], item.fileName, {
-      type: item.mimeType || blob.type,
+
+    // create a file object with proper name, type, and size
+    const file = new File([blob], item.asset.fileName, {
+      type: item.asset.file.mimeType || item.asset.mimeType || blob.type,
     });
     return file;
   } catch (error) {
-    console.error(`Failed to load asset ${item.id}:`, error);
+    console.error(`Failed to load asset ${item.asset.id}:`, error);
     return null;
   }
+}
+
+/**
+ * get thumbnail URLs for media selection
+ * @param input - MediaSelection or single item
+ * @returns array of thumbnail webPaths
+ */
+export function getMediaThumbnails(
+  input: MediaSelection | MediaItem
+): (string | null)[] {
+  const items = Array.isArray(input) ? input : [input];
+
+  return items.map(item => {
+    // native: PhotoLibraryAsset with thumbnail
+    if (item.source === 'native' && item.asset.thumbnail) {
+      return item.asset.thumbnail.webPath || null;
+    }
+    // web: not supported
+    return null;
+  });
 }
