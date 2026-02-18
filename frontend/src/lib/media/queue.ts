@@ -70,7 +70,7 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
     // extract filename
     const fileName = media.source === 'native'
       ? media.asset.fileName
-      : 'file'; // web handles don't have fileName easily accessible yet
+      : media.handle.name;
 
     // basic metadata from asset
     let metadata: Partial<QueuedMedia> = {};
