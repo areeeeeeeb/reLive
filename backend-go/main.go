@@ -61,7 +61,7 @@ func main() {
 	// if err != nil {
 	// 	log.Fatalf("Failed to create media service %v", err)
 	// }
-	
+
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
@@ -99,7 +99,7 @@ func main() {
 			{
 				dev.POST("/users/sync", userHandler.TestSync)
 				dev.POST("/videos/upload/init", videoHandler.UploadInit)
-				dev.POST("/videos/:id/upload/confirm", videoHandler.UploadConfirm)		
+				dev.POST("/videos/:id/upload/confirm", videoHandler.UploadConfirm)
 			}
 		}
 
@@ -113,7 +113,9 @@ func main() {
 				users.POST("/me", userHandler.Me)
 			}
 
+			// video routes require both auth and user resolution
 			videos := v2_auth.Group("/videos")
+			videos.Use(middleware.ResolveUser(store))
 			{
 				videos.GET("", videoHandler.List)
 				videos.GET("/:id", videoHandler.Get)
