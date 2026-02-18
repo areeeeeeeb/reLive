@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"strings"
 
 	"github.com/areeeeeeeb/reLive/backend-go/config"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
@@ -18,6 +19,19 @@ func main() {
 	ctx := context.Background()
 
 	cfg := config.Load()
+
+	var authMiddleware gin.HandlerFunc
+	if cfg.DevBypassAuth {
+		if cfg.Environment != "development" {
+			log.Fatal("DEV_BYPASS_AUTH cannot be enabled in non-development environments")
+		}
+		if strings.TrimSpace(cfg.DevAuth0ID) == "" {
+			log.Fatal("DEV_AUTH0_ID is required when DEV_BYPASS_AUTH is enabled")
+		}
+		authMiddleware = middleware.DevAuthBypass(cfg.DevAuth0ID)
+	} else {
+		authMiddleware = middleware.AuthRequired(cfg.Auth0)
+	}
 
 	pool, err := cfg.NewDBPool(ctx)
 	if err != nil {
@@ -51,7 +65,7 @@ func main() {
 	// if err != nil {
 	// 	log.Fatalf("Failed to create media service %v", err)
 	// }
-	
+
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
@@ -83,33 +97,34 @@ func main() {
 			})
 		})
 
-		// dev-only routes (no auth). disabled in production
-		if cfg.Environment != "production" {
-			dev := v2.Group("/dev")
+		// users routes
+		users := v2.Group("/users")
+		{
+			usersAuth := users.Group("")
+			usersAuth.Use(authMiddleware)
 			{
-				dev.POST("/users/sync", userHandler.TestSync)
-				dev.POST("/videos/upload/init", videoHandler.UploadInit)
-				dev.POST("/videos/:id/upload/confirm", videoHandler.UploadConfirm)		
+				usersAuth.POST("/sync", userHandler.Sync)
+			}
+
+			usersResolved := users.Group("")
+			usersResolved.Use(authMiddleware, middleware.ResolveUser(store))
+			{
+				usersResolved.POST("/me", userHandler.Me)
 			}
 		}
 
-		// auth required routes
-		v2_auth := v2.Group("")
-		v2_auth.Use(middleware.AuthRequired(cfg.Auth0))
+		// videos routes
+		videos := v2.Group("/videos")
 		{
-			users := v2_auth.Group("/users")
-			{
-				users.POST("/sync", userHandler.Sync)
-				users.POST("/me", userHandler.Me)
-			}
+			videos.GET("", videoHandler.List)
+			videos.GET("/:id", videoHandler.Get)
 
-			videos := v2_auth.Group("/videos")
+			videosResolved := videos.Group("")
+			videosResolved.Use(authMiddleware, middleware.ResolveUser(store))
 			{
-				videos.GET("", videoHandler.List)
-				videos.GET("/:id", videoHandler.Get)
-				videos.POST("/upload/init", videoHandler.UploadInit)
-				videos.POST("/:id/upload/confirm", videoHandler.UploadConfirm)
-				videos.DELETE("/:id", videoHandler.Delete)
+				videosResolved.POST("/upload/init", videoHandler.UploadInit)
+				videosResolved.POST("/:id/upload/confirm", videoHandler.UploadConfirm)
+				videosResolved.DELETE("/:id", videoHandler.Delete)
 			}
 		}
 	}
