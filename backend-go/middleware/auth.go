@@ -32,7 +32,7 @@ func AuthRequired(auth0 config.Auth0Config) gin.HandlerFunc {
 		validator.WithAllowedClockSkew(time.Minute), // allow small clock differences when checking exp/nbf/iat
 	)
 	if err != nil {
-		log.Fatalf("Failed to set up the jwt validator: %w", err)
+		log.Fatalf("Failed to set up the jwt validator: %v", err)
 	}
 
 	return func(c *gin.Context) {
