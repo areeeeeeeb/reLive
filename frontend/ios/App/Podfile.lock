@@ -1,5 +1,5 @@
 PODS:
-  - Capacitor (8.0.1):
+  - Capacitor (8.0.2):
     - CapacitorCordova
   - CapacitorApp (8.0.0):
     - Capacitor
@@ -7,10 +7,10 @@ PODS:
     - Capacitor
   - CapacitorCamera (8.0.0):
     - Capacitor
-  - CapacitorCordova (8.0.1)
-  - CapacitorFilesystem (8.0.0):
+  - CapacitorCordova (8.0.2)
+  - CapacitorFilesystem (8.1.0):
     - Capacitor
-    - IONFilesystemLib (~> 1.0.1)
+    - IONFilesystemLib (~> 1.1.0)
   - CapacitorHaptics (8.0.0):
     - Capacitor
   - CapacitorKeyboard (8.0.0):
@@ -19,7 +19,9 @@ PODS:
     - Capacitor
   - CapacitorStatusBar (8.0.0):
     - Capacitor
-  - IONFilesystemLib (1.0.1)
+  - CapgoCapacitorPhotoLibrary (8.0.9):
+    - Capacitor
+  - IONFilesystemLib (1.1.1)
 
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
@@ -32,6 +34,7 @@ DEPENDENCIES:
   - "CapacitorKeyboard (from `../../node_modules/@capacitor/keyboard`)"
   - "CapacitorPreferences (from `../../node_modules/@capacitor/preferences`)"
   - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
+  - "CapgoCapacitorPhotoLibrary (from `../../node_modules/@capgo/capacitor-photo-library`)"
 
 SPEC REPOS:
   trunk:
@@ -58,20 +61,23 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/preferences"
   CapacitorStatusBar:
     :path: "../../node_modules/@capacitor/status-bar"
+  CapgoCapacitorPhotoLibrary:
+    :path: "../../node_modules/@capgo/capacitor-photo-library"
 
 SPEC CHECKSUMS:
-  Capacitor: 2d8b1a05870ddb600b0e1e32b83fcf0890c244e1
+  Capacitor: cfc1ce4a70dbc19fdc4e66e17808937088029752
   CapacitorApp: cfa0120a1f3a6f69d4d37d3041782aa5c5167d0b
   CapacitorBrowser: 7452c73a202716d9c9035e5dbe5c5d8d07737f22
   CapacitorCamera: 05ac5bd4499ed4b8cf5358d1b4a874b385de7b4d
-  CapacitorCordova: 0d65b9bb74e995dcecb9463f34f1af2aba6f955c
-  CapacitorFilesystem: 608bca984a5b6b2cba85a2972ea22974a37659d8
+  CapacitorCordova: 921bdb690ebe82421b24fce45552fd3dea2ae43a
+  CapacitorFilesystem: 57c128a5ea9875aa7bb54eb7431e63d7721bedd4
   CapacitorHaptics: 7a77ce744c4b516b3ffd7f8c96d3de574d77b898
   CapacitorKeyboard: 0a2e7c0635ccf3db60abed14bd6f35147ce25942
   CapacitorPreferences: 83f13cc19660ca9649a4769ec255be93f8c2ff68
   CapacitorStatusBar: c6fa2d404083e41d145ea56698707a6986d4428b
-  IONFilesystemLib: 89258b8e3e85465da93127d25d7ce37f977e8a6f
+  CapgoCapacitorPhotoLibrary: e3e431ff843f94a7c5e61561fdded1421d13baee
+  IONFilesystemLib: dfa8706539ac9ab77ccfd6e5b3830ce9b5e57f6c
 
-PODFILE CHECKSUM: 51c36ff7da449028cb9e2d6552eaf396ac1bde49
+PODFILE CHECKSUM: 42f7f0a0eae54ff8e705bda366b94e4aa44680cc
 
 COCOAPODS: 1.16.2
