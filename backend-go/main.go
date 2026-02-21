@@ -71,6 +71,9 @@ func main() {
 	// add service structs here
 	userService := services.NewUserService(store)
 	videoService := services.NewVideoService(store, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
+	searchService := services.NewSearchService()
+	artistService := services.NewArtistService(store, searchService)
+	songService := services.NewSongService(store, searchService)
 	// mediaService, err := services.NewMediaService()
 	// if err != nil {
 	// 	log.Fatalf("Failed to create media service %v", err)
@@ -79,6 +82,8 @@ func main() {
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
+	artistHandler := handlers.NewArtistHandler(artistService)
+	songHandler := handlers.NewSongHandler(songService)
 
 	// start job queue for background processing
 	processingService := services.NewProcessingService(store)
@@ -142,6 +147,20 @@ func main() {
 				videosResolved.POST("/:id/upload/confirm", videoHandler.UploadConfirm)
 				videosResolved.DELETE("/:id", videoHandler.Delete)
 			}
+		}
+
+		// artists routes
+		artists := v2.Group("/artists")
+		{
+			artists.GET("/search", artistHandler.Search)
+			artists.GET("/:id", artistHandler.Get)
+		}
+
+		// songs routes
+		songs := v2.Group("/songs")
+		{
+			songs.GET("/search", songHandler.Search)
+			songs.GET("/:id", songHandler.Get)
 		}
 	}
 
