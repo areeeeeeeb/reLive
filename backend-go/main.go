@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"strings"
 
 	"github.com/areeeeeeeb/reLive/backend-go/config"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
@@ -20,14 +19,12 @@ func main() {
 
 	cfg := config.Load()
 
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Invalid configuration: %v", err)
+	}
+
 	var authMiddleware gin.HandlerFunc
 	if cfg.DevBypassAuth {
-		if cfg.Environment != "development" {
-			log.Fatal("DEV_BYPASS_AUTH cannot be enabled in non-development environments")
-		}
-		if strings.TrimSpace(cfg.DevAuth0ID) == "" {
-			log.Fatal("DEV_AUTH0_ID is required when DEV_BYPASS_AUTH is enabled")
-		}
 		authMiddleware = middleware.DevAuthBypass(cfg.DevAuth0ID)
 	} else {
 		authMiddleware = middleware.AuthRequired(cfg.Auth0)
@@ -66,11 +63,17 @@ func main() {
 	}))
 
 	// store for DB operations
-	store := database.NewStore(pool)
+	store, err := database.NewStore(pool, cfg.Store.SearchTrgmSimilarityThreshold)
+	if err != nil {
+		log.Fatalf("Failed to create store %v", err)
+	}
 
 	// add service structs here
 	userService := services.NewUserService(store)
 	videoService := services.NewVideoService(store, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
+	searchService := services.NewSearchService()
+	artistService := services.NewArtistService(store, searchService)
+	songService := services.NewSongService(store, searchService)
 	// mediaService, err := services.NewMediaService()
 	// if err != nil {
 	// 	log.Fatalf("Failed to create media service %v", err)
@@ -79,6 +82,8 @@ func main() {
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
+	artistHandler := handlers.NewArtistHandler(artistService)
+	songHandler := handlers.NewSongHandler(songService)
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {
@@ -136,6 +141,20 @@ func main() {
 				videosResolved.POST("/:id/upload/confirm", videoHandler.UploadConfirm)
 				videosResolved.DELETE("/:id", videoHandler.Delete)
 			}
+		}
+
+		// artists routes
+		artists := v2.Group("/artists")
+		{
+			artists.GET("/search", artistHandler.Search)
+			artists.GET("/:id", artistHandler.Get)
+		}
+
+		// songs routes
+		songs := v2.Group("/songs")
+		{
+			songs.GET("/search", songHandler.Search)
+			songs.GET("/:id", songHandler.Get)
 		}
 	}
 
