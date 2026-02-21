@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -16,6 +17,8 @@ type Config struct {
 
 	Auth0  Auth0Config
 	Spaces SpacesConfig
+	Concurrency ConcurrencyConfig
+
 }
 
 type Auth0Config struct {
@@ -32,6 +35,13 @@ type SpacesConfig struct {
 	CdnURL    string
 }
 
+type ConcurrencyConfig struct {
+	Concurrency    int
+	QueueSize      int
+	Interval       int // seconds
+	StuckThreshold int // minutes, videos processing longer than this are assumed stuck
+}
+
 func Load() *Config {
 	godotenv.Load()
 
@@ -42,6 +52,13 @@ func Load() *Config {
 		DevBypassAuth: getEnvBool("DEV_BYPASS_AUTH", false),
 		DevAuth0ID:    getEnv("DEV_AUTH0_ID", ""),
 
+		Concurrency: ConcurrencyConfig{
+			Concurrency:    getEnvInt("POOL_CONCURRENCY", 20),
+			QueueSize:      getEnvInt("POOL_QUEUE_SIZE", 50),
+			Interval:       getEnvInt("POLL_INTERVAL_SECONDS", 10),
+			StuckThreshold: getEnvInt("STUCK_THRESHOLD_MINUTES", 30),
+		},
+		
 		Auth0: Auth0Config{
 			Domain:   getEnv("AUTH0_DOMAIN", ""),
 			Audience: getEnv("AUTH0_AUDIENCE", ""),
@@ -79,3 +96,16 @@ func getEnvBool(key string, defaultValue bool) bool {
 		return defaultValue
 	}
 }
+
+func getEnvInt(key string, defaultValue int) int {
+	s := getEnv(key, "")
+	if s == "" {
+		return defaultValue
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultValue
+	}
+	return v
+}
+

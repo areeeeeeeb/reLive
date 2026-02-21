@@ -49,33 +49,35 @@ type ffprobeStream struct {
 }
 
 // extractGPS tries known tag keys for GPS coordinates (Android, iOS).
-func extractGPS(tags map[string]string) models.GPSCoordinates {
+// Returns nil if no valid GPS data is found.
+func extractGPS(tags map[string]string) *models.GPSCoordinates {
 	androidKey := "location"
 	iosKey := "com.apple.quicktime.location.ISO6709"
 
 	if loc, ok := tags[androidKey]; ok {
 		if gps := parseGPSFromTag(loc); gps.Latitude != 0 || gps.Longitude != 0 {
-			return gps
+			return &gps
 		}
 	}
-	
+
 	if loc, ok := tags[iosKey]; ok {
 		if gps := parseGPSFromTag(loc); gps.Latitude != 0 || gps.Longitude != 0 {
-			return gps
+			return &gps
 		}
 	}
-	
-	return models.GPSCoordinates{}
+
+	return nil
 }
 
 // extractTimestamp tries known tag keys for recording time.
-func extractTimestamp(tags map[string]string) time.Time {
+// Returns nil if no valid timestamp is found.
+func extractTimestamp(tags map[string]string) *time.Time {
 	if ts, ok := tags["creation_time"]; ok {
 		if t, err := time.Parse(time.RFC3339Nano, ts); err == nil {
-			return t
+			return &t
 		}
 	}
-	return time.Time{}
+	return nil
 }
 
 // parseGPSFromTag parses ISO 6709 GPS string like "+40.7128-074.0060/" into coordinates.
@@ -130,15 +132,16 @@ func (m *MediaService) ProbeMetadata(ctx context.Context, filePath string) (*mod
 
 	if probe.Format.Duration != "" {
 		if d, err := strconv.ParseFloat(probe.Format.Duration, 64); err == nil {
-			metadata.Duration = d
+			metadata.Duration = &d
 		}
 	}
 
 	for _, stream := range probe.Streams {
 		// we should be getting a video stream
 		if stream.CodecType == "video" {
-			metadata.Width = stream.Width
-			metadata.Height = stream.Height
+			w, h := stream.Width, stream.Height
+			metadata.Width = &w
+			metadata.Height = &h
 			break
 		}
 	}

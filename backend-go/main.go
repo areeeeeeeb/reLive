@@ -17,7 +17,7 @@ import (
 func main() {
 	// Create Gin router
 	ctx := context.Background()
-
+	// Load configuration from environment variables
 	cfg := config.Load()
 
 	var authMiddleware gin.HandlerFunc
@@ -38,12 +38,12 @@ func main() {
 		log.Fatalf("Failed to connect to database %v", err)
 	}
 	defer pool.Close()
-
+	// Connect to S3
 	s3Client, err := cfg.NewS3Client(ctx)
 	if err != nil {
 		log.Fatalf("Failed to connect to s3 %v", err)
 	}
-
+	// Create Gin router
 	r := gin.Default()
 
 	// CORS middleware
@@ -79,6 +79,12 @@ func main() {
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
+
+	// start job queue for background processing
+	processingService := services.NewProcessingService(store)
+	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.Interval, cfg.Concurrency.StuckThreshold)
+	jobQueue.Start(ctx)
+
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {

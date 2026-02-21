@@ -52,13 +52,14 @@ const (
 	EventTypeConcert = "concert"
 )
 
-// VideoMetadata extracted from video file
+// VideoMetadata extracted from video file.
+// All fields are pointers - nil means the data was not found in the file.
 type VideoMetadata struct {
-	GPS       GPSCoordinates
-	Timestamp time.Time
-	Duration  float64
-	Width     int
-	Height    int
+	GPS       *GPSCoordinates
+	Timestamp *time.Time
+	Duration  *float64
+	Width     *int
+	Height    *int
 	// Codec     string // cpmpression tech, we'll learn about this as we go
 }
 

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/jackc/pgx/v5"
@@ -65,6 +66,22 @@ func scanVideo(row pgx.Row) (*models.Video, error) {
 	return &v, nil
 }
 
+func scanVideos(rows pgx.Rows, allowPartial bool) ([]*models.Video, error) {
+	defer rows.Close()
+	var videos []*models.Video
+	for rows.Next() {
+		v, err := scanVideo(rows)
+		if err != nil {
+			if allowPartial {
+				continue
+			}
+			return nil, err
+		}
+		videos = append(videos, v)
+	}
+	return videos, rows.Err()
+}
+
 
 // CreateVideo inserts a new video record with pending_upload status
 func (s *Store) CreateVideo(ctx context.Context, userID int, filename, s3Key, videoURL string) (*models.Video, error) {
@@ -119,4 +136,73 @@ func (s *Store) SetVideoConcert(ctx context.Context, videoID int, concertID int)
 // TODO: add song_id column to videos table
 func (s *Store) SetVideoSong(ctx context.Context, videoID int, songID int) error {
 	return fmt.Errorf("not implemented")
+}
+
+// ClaimQueuedVideos atomically claims up to `limit` queued videos for processing.
+// FOR UPDATE SKIP LOCKED prevents double-claiming across concurrent workers/instances.
+func (s *Store) ClaimQueuedVideos(ctx context.Context, limit int) ([]*models.Video, error) {
+	const q = `
+	UPDATE videos SET status = $1, updated_at = NOW()
+	WHERE id IN (
+		SELECT id FROM videos
+		WHERE status = $2 AND deleted_at IS NULL
+		ORDER BY created_at
+		LIMIT $3
+		FOR UPDATE SKIP LOCKED
+	)
+	RETURNING ` + videoCols
+
+	rows, err := s.pool.Query(ctx, q,
+		models.VideoStatusProcessing,
+		models.VideoStatusQueued,
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return scanVideos(rows, true)
+}
+
+// UpdateVideoMetadata updates the extracted/fallback metadata fields for a video.
+// Uses COALESCE to only overwrite fields that are provided (non-nil).
+// NOTE: This means you cannot intentionally clear a field back to NULL with this method.
+func (s *Store) UpdateVideoMetadata(ctx context.Context, videoID int, meta models.VideoMetadata) error {
+	const q = `
+	UPDATE videos
+	SET duration = COALESCE($1, duration),
+	    latitude = COALESCE($2, latitude),
+	    longitude = COALESCE($3, longitude),
+	    recorded_at = COALESCE($4, recorded_at),
+	    width = COALESCE($5, width),
+	    height = COALESCE($6, height),
+	    updated_at = NOW()
+	WHERE id = $7`
+
+	var lat, lng *float64
+	if meta.GPS != nil {
+		lat = &meta.GPS.Latitude
+		lng = &meta.GPS.Longitude
+	}
+
+	_, err := s.pool.Exec(ctx, q,
+		meta.Duration,
+		lat,
+		lng,
+		meta.Timestamp,
+		meta.Width,
+		meta.Height,
+		videoID,
+	)
+	return err
+}
+
+// ResetStuckProcessingVideos resets videos that have been stuck in processing for longer than stuckAfter.
+// This avoids resetting videos that are actively being processed by another instance.
+func (s *Store) ResetStuckProcessingVideos(ctx context.Context, stuckAfter time.Duration) error {
+	const q = `
+	UPDATE videos SET status = $1, updated_at = NOW()
+	WHERE status = $2 AND deleted_at IS NULL AND updated_at < $3`
+	cutoff := time.Now().Add(-stuckAfter)
+	_, err := s.pool.Exec(ctx, q, models.VideoStatusQueued, models.VideoStatusProcessing, cutoff)
+	return err
 }

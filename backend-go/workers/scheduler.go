@@ -36,7 +36,6 @@ func (s *Scheduler) Run(ctx context.Context) {
 	s.poll(ctx) // run immediately on start
 
 	ticker := time.NewTicker(s.interval)
-	log.Printf("[scheduler:%s] ticker started with interval=%s", s.name, s.interval)
 	defer ticker.Stop()
 
 	for {
@@ -53,7 +52,6 @@ func (s *Scheduler) Run(ctx context.Context) {
 }
 
 // Poll checks available pool capacity, fetches work accordingly and submits to pool until context is done. 
-// This is safe since we are using Postgres-based buffered queue, so we won't lose any jobs if the scheduler is stopped while processing.
 func (s *Scheduler) poll(ctx context.Context) {
 	available := s.pool.Available()
 	if available <= 0 {
