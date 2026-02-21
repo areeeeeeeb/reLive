@@ -1,0 +1,71 @@
+package handlers
+
+import (
+	"errors"
+	"net/http"
+	"strconv"
+
+	"github.com/areeeeeeeb/reLive/backend-go/apperr"
+	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/services"
+	"github.com/gin-gonic/gin"
+)
+
+type ArtistHandler struct {
+	artistService *services.ArtistService
+}
+
+func NewArtistHandler(artistService *services.ArtistService) *ArtistHandler {
+	return &ArtistHandler{artistService: artistService}
+}
+
+//	GET /artists/:id
+func (h *ArtistHandler) Get(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid artist id"})
+		return
+	}
+
+	artist, err := h.artistService.Get(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, apperr.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "artist not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get artist"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"artist": artist})
+}
+
+// Search returns artists matching a query string.
+//
+//	GET /artists/search?q=radiohead&max_results=10&source=mixed
+// default (main) behavior is to search both local and external sources
+// this can be overridden by setting the source query parameter
+func (h *ArtistHandler) Search(c *gin.Context) {
+	var req models.SearchRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.MaxResults <= 0 {
+		req.MaxResults = models.SearchMaxResultsDefault
+	}
+	if req.MaxResults > models.SearchMaxResultsMax {
+		req.MaxResults = models.SearchMaxResultsMax
+	}
+	if req.Source == "" {
+		req.Source = models.SearchDefaultSource
+	}
+
+	artists, err := h.artistService.Search(c.Request.Context(), req.Q, req.MaxResults, req.Source)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "artist search failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"artists": artists})
+}
