@@ -36,9 +36,10 @@ type SpacesConfig struct {
 }
 
 type ConcurrencyConfig struct {
-	Concurrency int
-	QueueSize   int
-	Interval    int // seconds
+	Concurrency    int
+	QueueSize      int
+	Interval       int // seconds
+	StuckThreshold int // minutes, videos processing longer than this are assumed stuck
 }
 
 func Load() *Config {
@@ -52,9 +53,10 @@ func Load() *Config {
 		DevAuth0ID:    getEnv("DEV_AUTH0_ID", ""),
 
 		Concurrency: ConcurrencyConfig{
-			Concurrency: getEnvInt("POOL_CONCURRENCY", 20),
-			QueueSize:   getEnvInt("POOL_QUEUE_SIZE", 50),
-			Interval:    getEnvInt("POLL_INTERVAL_SECONDS", 10),
+			Concurrency:    getEnvInt("POOL_CONCURRENCY", 20),
+			QueueSize:      getEnvInt("POOL_QUEUE_SIZE", 50),
+			Interval:       getEnvInt("POLL_INTERVAL_SECONDS", 10),
+			StuckThreshold: getEnvInt("STUCK_THRESHOLD_MINUTES", 30),
 		},
 		
 		Auth0: Auth0Config{

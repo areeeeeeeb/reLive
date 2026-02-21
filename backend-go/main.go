@@ -72,7 +72,7 @@ func main() {
 
 	// start job queue for background processing
 	processingService := services.NewProcessingService(store)
-	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency)
+	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.Interval, cfg.Concurrency.StuckThreshold)
 	jobQueue.Start(ctx)
 
 
