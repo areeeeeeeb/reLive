@@ -47,12 +47,15 @@ func scanSong(row pgx.Row) (*models.Song, error) {
 	return &s, nil
 }
 
-func scanSongs(rows pgx.Rows) ([]models.Song, error) {
-	var songs []models.Song
+func scanSongs(rows pgx.Rows, allowPartial bool) ([]models.Song, error) {
+	songs := make([]models.Song, 0)
 	for rows.Next() {
 		s, err := scanSong(rows)
 		if err != nil {
-			return nil, err
+			if allowPartial {
+				continue
+			}
+			return songs, err
 		}
 		songs = append(songs, *s)
 	}
@@ -90,5 +93,5 @@ func (s *Store) SearchSongs(ctx context.Context, query string, maxResults int) (
 	}
 	defer rows.Close()
 
-	return scanSongs(rows)
+	return scanSongs(rows, true)
 }
