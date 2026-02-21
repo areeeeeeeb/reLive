@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -49,35 +50,41 @@ type ffprobeStream struct {
 }
 
 // extractGPS tries known tag keys for GPS coordinates (Android, iOS).
-// Returns nil if no valid GPS data is found.
-func extractGPS(tags map[string]string) *models.GPSCoordinates {
+// Returns nil, nil if no GPS tags are present. Returns an error if a tag is
+// present but fails to parse — callers should log this.
+func extractGPS(tags map[string]string) (*models.GPSCoordinates, error) {
 	androidKey := "location"
 	iosKey := "com.apple.quicktime.location.ISO6709"
 
 	if loc, ok := tags[androidKey]; ok {
 		if gps := parseGPSFromTag(loc); gps.Latitude != 0 || gps.Longitude != 0 {
-			return &gps
+			return &gps, nil
 		}
+		return nil, fmt.Errorf("failed to parse GPS from android tag: %q", loc)
 	}
 
 	if loc, ok := tags[iosKey]; ok {
 		if gps := parseGPSFromTag(loc); gps.Latitude != 0 || gps.Longitude != 0 {
-			return &gps
+			return &gps, nil
 		}
+		return nil, fmt.Errorf("failed to parse GPS from iOS tag: %q", loc)
 	}
 
-	return nil
+	return nil, nil
 }
 
 // extractTimestamp tries known tag keys for recording time.
-// Returns nil if no valid timestamp is found.
-func extractTimestamp(tags map[string]string) *time.Time {
+// Returns nil, nil if no timestamp tag is present. Returns an error if the tag
+// is present but fails to parse — callers should log this.
+func extractTimestamp(tags map[string]string) (*time.Time, error) {
 	if ts, ok := tags["creation_time"]; ok {
-		if t, err := time.Parse(time.RFC3339Nano, ts); err == nil {
-			return &t
+		t, err := time.Parse(time.RFC3339Nano, ts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse creation_time %q: %w", ts, err)
 		}
+		return &t, nil
 	}
-	return nil
+	return nil, nil
 }
 
 // parseGPSFromTag parses ISO 6709 GPS string like "+40.7128-074.0060/" into coordinates.
@@ -146,8 +153,17 @@ func (m *MediaService) ProbeMetadata(ctx context.Context, filePath string) (*mod
 		}
 	}
 
-	metadata.GPS = extractGPS(probe.Format.Tags)
-	metadata.Timestamp = extractTimestamp(probe.Format.Tags)
+	gps, err := extractGPS(probe.Format.Tags)
+	if err != nil {
+		log.Printf("extractGPS: %v", err)
+	}
+	metadata.GPS = gps
+
+	ts, err := extractTimestamp(probe.Format.Tags)
+	if err != nil {
+		log.Printf("extractTimestamp: %v", err)
+	}
+	metadata.Timestamp = ts
 
 	return metadata, nil
 }
