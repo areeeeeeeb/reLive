@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -49,35 +50,35 @@ type ffprobeStream struct {
 }
 
 // extractGPS tries known tag keys for GPS coordinates (Android, iOS).
-// Returns nil if no valid GPS data is found.
-func extractGPS(tags map[string]string) *models.GPSCoordinates {
+// Returns an error if GPS could not be extracted — callers decide whether and how to log it.
+func extractGPS(tags map[string]string) (*models.GPSCoordinates, error) {
 	androidKey := "location"
 	iosKey := "com.apple.quicktime.location.ISO6709"
 
 	if loc, ok := tags[androidKey]; ok {
 		if gps := parseGPSFromTag(loc); gps.Latitude != 0 || gps.Longitude != 0 {
-			return &gps
+			return &gps, nil
 		}
 	}
 
 	if loc, ok := tags[iosKey]; ok {
 		if gps := parseGPSFromTag(loc); gps.Latitude != 0 || gps.Longitude != 0 {
-			return &gps
+			return &gps, nil
 		}
 	}
 
-	return nil
+	return nil, fmt.Errorf("GPS data not extracted")
 }
 
 // extractTimestamp tries known tag keys for recording time.
-// Returns nil if no valid timestamp is found.
-func extractTimestamp(tags map[string]string) *time.Time {
+// Returns an error if a timestamp could not be extracted — callers decide whether and how to log it.
+func extractTimestamp(tags map[string]string) (*time.Time, error) {
 	if ts, ok := tags["creation_time"]; ok {
 		if t, err := time.Parse(time.RFC3339Nano, ts); err == nil {
-			return &t
+			return &t, nil
 		}
 	}
-	return nil
+	return nil, fmt.Errorf("timestamp not extracted")
 }
 
 // parseGPSFromTag parses ISO 6709 GPS string like "+40.7128-074.0060/" into coordinates.
@@ -146,8 +147,17 @@ func (m *MediaService) ProbeMetadata(ctx context.Context, filePath string) (*mod
 		}
 	}
 
-	metadata.GPS = extractGPS(probe.Format.Tags)
-	metadata.Timestamp = extractTimestamp(probe.Format.Tags)
+	gps, err := extractGPS(probe.Format.Tags)
+	if err != nil {
+		log.Printf("[INFO] ProbeMetadata: %v", err)
+	}
+	metadata.GPS = gps
+
+	ts, err := extractTimestamp(probe.Format.Tags)
+	if err != nil {
+		log.Printf("[INFO] ProbeMetadata: %v", err)
+	}
+	metadata.Timestamp = ts
 
 	return metadata, nil
 }
