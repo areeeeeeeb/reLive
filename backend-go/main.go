@@ -63,7 +63,10 @@ func main() {
 	}))
 
 	// store for DB operations
-	store := database.NewStore(pool)
+	store, err := database.NewStore(pool, cfg.Store.SearchTrgmSimilarityThreshold)
+	if err != nil {
+		log.Fatalf("Failed to create store %v", err)
+	}
 
 	// add service structs here
 	userService := services.NewUserService(store)

@@ -67,16 +67,22 @@ func (s *Store) GetArtistByID(ctx context.Context, id int) (*models.Artist, erro
 }
 
 func (s *Store) SearchArtists(ctx context.Context, query string, maxResults int) ([]models.Artist, error) {
+	query, likeQuery := prepareSearchQuery(query)
+
 	const q = `
 	SELECT ` + artistCols + `
 	FROM artists
-	WHERE name ILIKE $1 AND deleted_at IS NULL
-	ORDER BY is_verified DESC, name ASC
-	LIMIT $2`
+	WHERE deleted_at IS NULL
+	  AND (name ILIKE $2 OR name % $1)
+	ORDER BY
+	  (lower(name) = lower($1)) DESC,
+	  (name ILIKE $1 || '%') DESC,
+	  similarity(name, $1) DESC,
+	  is_verified DESC,
+	  name ASC
+	LIMIT $3`
 
-	// TODO: better search ranking system
-
-	rows, err := s.pool.Query(ctx, q, "%"+escapeILIKE(query)+"%", maxResults) // TODO: use elasticsearch
+	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults)
 	if err != nil {
 		return nil, err
 	}
