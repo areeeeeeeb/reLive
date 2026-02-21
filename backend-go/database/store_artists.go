@@ -73,7 +73,7 @@ func (s *Store) SearchArtists(ctx context.Context, query string, maxResults int)
 	SELECT ` + artistCols + `
 	FROM artists
 	WHERE deleted_at IS NULL
-	  AND (name ILIKE $2 OR name % $1)
+	  AND (name ILIKE $2 OR similarity(name, $1) >= $4)
 	ORDER BY
 	  (lower(name) = lower($1)) DESC,
 	  (name ILIKE $1 || '%') DESC,
@@ -82,7 +82,7 @@ func (s *Store) SearchArtists(ctx context.Context, query string, maxResults int)
 	  name ASC
 	LIMIT $3`
 
-	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults)
+	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults, s.searchTrgmSimilarityThreshold)
 	if err != nil {
 		return nil, err
 	}

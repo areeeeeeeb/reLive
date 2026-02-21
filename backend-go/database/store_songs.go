@@ -75,7 +75,7 @@ func (s *Store) SearchSongs(ctx context.Context, query string, maxResults int) (
 	SELECT ` + songCols + `
 	FROM songs
 	WHERE deleted_at IS NULL
-	  AND (title ILIKE $2 OR title % $1)
+	  AND (title ILIKE $2 OR similarity(title, $1) >= $4)
 	ORDER BY
 	  (lower(title) = lower($1)) DESC,
 	  (title ILIKE $1 || '%') DESC,
@@ -84,7 +84,7 @@ func (s *Store) SearchSongs(ctx context.Context, query string, maxResults int) (
 	  title ASC
 	LIMIT $3`
 
-	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults)
+	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults, s.searchTrgmSimilarityThreshold)
 	if err != nil {
 		return nil, err
 	}
