@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -11,11 +12,16 @@ type Config struct {
 	Port          string
 	Environment   string
 	DatabaseURL   string
+	Store         StoreConfig
 	DevBypassAuth bool
 	DevAuth0ID    string
 
 	Auth0  Auth0Config
 	Spaces SpacesConfig
+}
+
+type StoreConfig struct {
+	SearchTrgmSimilarityThreshold float64
 }
 
 type Auth0Config struct {
@@ -41,6 +47,10 @@ func Load() *Config {
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		DevBypassAuth: getEnvBool("DEV_BYPASS_AUTH", false),
 		DevAuth0ID:    getEnv("DEV_AUTH0_ID", ""),
+
+		Store: StoreConfig{
+			SearchTrgmSimilarityThreshold: getEnvFloat64("SEARCH_TRGM_SIMILARITY_THRESHOLD", 0.3),
+		},
 
 		Auth0: Auth0Config{
 			Domain:   getEnv("AUTH0_DOMAIN", ""),
@@ -78,4 +88,17 @@ func getEnvBool(key string, defaultValue bool) bool {
 	default:
 		return defaultValue
 	}
+}
+
+func getEnvFloat64(key string, defaultValue float64) float64 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return defaultValue
+	}
+
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return defaultValue
+	}
+	return parsed
 }
