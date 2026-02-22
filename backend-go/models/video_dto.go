@@ -1,10 +1,21 @@
 package models
 
-// UploadInitRequest for initiating a multipart upload
+import "time"
+
+// UploadInitRequest for initiating a multipart upload.
+// Metadata fields are optional — if provided, pipeline A (concert/song detection) starts immediately.
 type UploadInitRequest struct {
 	Filename    string `json:"filename" binding:"required"`
 	ContentType string `json:"contentType" binding:"required"`
 	SizeBytes   int64  `json:"sizeBytes" binding:"required,min=1"`
+
+	// client-extracted metadata (optional)
+	RecordedAt *time.Time `json:"recordedAt"`
+	Latitude   *float64   `json:"latitude"`
+	Longitude  *float64   `json:"longitude"`
+	Duration   *float64   `json:"duration"` // seconds
+	Width      *int       `json:"width"`
+	Height     *int       `json:"height"`
 }
 
 // UploadInitResponse returned with presigned URLs for multipart upload

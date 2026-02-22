@@ -43,9 +43,7 @@ func (h *VideoHandler) UploadInit(c *gin.Context) {
 	result, err := h.videoService.InitUpload(
 		c.Request.Context(),
 		userID,
-		req.Filename,
-		req.ContentType,
-		req.SizeBytes,
+		&req,
 	)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})

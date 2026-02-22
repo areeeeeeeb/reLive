@@ -28,6 +28,8 @@ type Video struct {
     Width        *int       `db:"width" json:"width"`
     Height       *int       `db:"height" json:"height"`
 
+	DetectionStatus *string    `db:"detection_status" json:"detection_status,omitempty"`
+
 	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`
 	ProcessedAt  *time.Time `db:"processed_at" json:"processed_at"` // Nullable
@@ -50,6 +52,14 @@ const (
 
 const (
 	EventTypeConcert = "concert"
+)
+
+// DetectionStatus constants — tracks pipeline A (concert/song detection) independently of upload status
+const (
+	VideoDetectionStatusPending    = "pending"
+	VideoDetectionStatusProcessing = "processing"
+	VideoDetectionStatusCompleted  = "completed"
+	VideoDetectionStatusFailed     = "failed"
 )
 
 // VideoMetadata extracted from video file.
