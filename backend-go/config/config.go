@@ -12,6 +12,7 @@ type Config struct {
 	Port          string
 	Environment   string
 	DatabaseURL   string
+	Store         StoreConfig
 	DevBypassAuth bool
 	DevAuth0ID    string
 
@@ -19,6 +20,10 @@ type Config struct {
 	Spaces SpacesConfig
 	Concurrency ConcurrencyConfig
 
+}
+
+type StoreConfig struct {
+	SearchTrgmSimilarityThreshold float64
 }
 
 type Auth0Config struct {
@@ -51,6 +56,10 @@ func Load() *Config {
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		DevBypassAuth: getEnvBool("DEV_BYPASS_AUTH", false),
 		DevAuth0ID:    getEnv("DEV_AUTH0_ID", ""),
+
+		Store: StoreConfig{
+			SearchTrgmSimilarityThreshold: getEnvFloat64("SEARCH_TRGM_SIMILARITY_THRESHOLD", 0.3),
+		},
 
 		Concurrency: ConcurrencyConfig{
 			Concurrency:    getEnvInt("POOL_CONCURRENCY", 20),
@@ -109,3 +118,16 @@ func getEnvInt(key string, defaultValue int) int {
 	return v
 }
 
+
+func getEnvFloat64(key string, defaultValue float64) float64 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return defaultValue
+	}
+
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return defaultValue
+	}
+	return parsed
+}

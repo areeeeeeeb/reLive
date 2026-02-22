@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"strings"
 
 	"github.com/areeeeeeeb/reLive/backend-go/config"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
@@ -20,14 +19,12 @@ func main() {
 	// Load configuration from environment variables
 	cfg := config.Load()
 
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Invalid configuration: %v", err)
+	}
+
 	var authMiddleware gin.HandlerFunc
 	if cfg.DevBypassAuth {
-		if cfg.Environment != "development" {
-			log.Fatal("DEV_BYPASS_AUTH cannot be enabled in non-development environments")
-		}
-		if strings.TrimSpace(cfg.DevAuth0ID) == "" {
-			log.Fatal("DEV_AUTH0_ID is required when DEV_BYPASS_AUTH is enabled")
-		}
 		authMiddleware = middleware.DevAuthBypass(cfg.DevAuth0ID)
 	} else {
 		authMiddleware = middleware.AuthRequired(cfg.Auth0)
@@ -66,7 +63,7 @@ func main() {
 	}))
 
 	// store for DB operations
-	store := database.NewStore(pool)
+	store := database.NewStore(pool, cfg.Store.SearchTrgmSimilarityThreshold)
 
 	// add service structs here
 	userService := services.NewUserService(store)

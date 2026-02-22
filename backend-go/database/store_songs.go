@@ -47,12 +47,15 @@ func scanSong(row pgx.Row) (*models.Song, error) {
 	return &s, nil
 }
 
-func scanSongs(rows pgx.Rows) ([]models.Song, error) {
-	var songs []models.Song
+func scanSongs(rows pgx.Rows, allowPartial bool) ([]models.Song, error) {
+	songs := make([]models.Song, 0)
 	for rows.Next() {
 		s, err := scanSong(rows)
 		if err != nil {
-			return nil, err
+			if allowPartial {
+				continue
+			}
+			return songs, err
 		}
 		songs = append(songs, *s)
 	}
@@ -69,21 +72,26 @@ func (s *Store) GetSongByID(ctx context.Context, id int) (*models.Song, error) {
 }
 
 func (s *Store) SearchSongs(ctx context.Context, query string, maxResults int) ([]models.Song, error) {
+	query, likeQuery := prepareSearchQuery(query)
+
 	const q = `
 	SELECT ` + songCols + `
 	FROM songs
-	WHERE title ILIKE $1 AND deleted_at IS NULL
-	ORDER BY is_verified DESC, title ASC
-	LIMIT $2`
+	WHERE deleted_at IS NULL
+	  AND (title ILIKE $2 OR similarity(title, $1) >= $4)
+	ORDER BY
+	  (lower(title) = lower($1)) DESC,
+	  (title ILIKE $1 || '%') DESC,
+	  similarity(title, $1) DESC,
+	  is_verified DESC,
+	  title ASC
+	LIMIT $3`
 
-	// TODO: better search ranking system
-
-	rows, err := s.pool.Query(ctx, q,  "%"+escapeILIKE(query)+"%", maxResults) // TODO: use elasticsearch
+	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults, s.searchTrgmSimilarityThreshold)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-
-	return scanSongs(rows)
+	return scanSongs(rows, true)
 }

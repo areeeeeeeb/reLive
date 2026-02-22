@@ -7,5 +7,10 @@ import "errors"
 var (
 	ErrNotFound  = errors.New("not found")
 	ErrDuplicate = errors.New("duplicate")
+
+	// config env errors
+	ErrDevBypassAuthNotAllowed = errors.New("DEV_BYPASS_AUTH cannot be enabled in non-development environments")
+	ErrDevBypassAuthAuth0IDNotSet = errors.New("DEV_AUTH0_ID is required when DEV_BYPASS_AUTH is enabled")
+	ErrInvalidSearchTrgmSimilarityThreshold = errors.New("search trigram similarity threshold must be between 0 and 1")
 )
 
