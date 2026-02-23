@@ -104,8 +104,8 @@ func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID in
 		return fmt.Errorf("failed to complete S3 upload: %w", err)
 	}
 
-	// Update video status to queued (ready for processing)
-	if _, err := s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusQueued); err != nil {
+	// Update video status to completed (upload done)
+	if _, err := s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusCompleted); err != nil {
 		return fmt.Errorf("failed to update video status: %w", err)
 	}
 
