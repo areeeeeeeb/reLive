@@ -1,0 +1,28 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend-go/**"
+      - ".github/workflows/lint-check.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend-go/go.mod
+          cache-dependency-path: backend-go/go.sum
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: backend-go
+          version: latest
