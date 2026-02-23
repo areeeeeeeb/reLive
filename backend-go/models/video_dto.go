@@ -3,7 +3,7 @@ package models
 import "time"
 
 // UploadInitRequest for initiating a multipart upload.
-// Metadata fields are optional — if provided, pipeline A (concert/song detection) starts immediately.
+// Metadata fields are optional — if provided, the processing pipeline starts immediately.
 type UploadInitRequest struct {
 	Filename    string `json:"filename" binding:"required"`
 	ContentType string `json:"contentType" binding:"required"`
