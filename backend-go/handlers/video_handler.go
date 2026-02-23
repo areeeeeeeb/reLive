@@ -89,7 +89,7 @@ func (h *VideoHandler) UploadConfirm(c *gin.Context) {
 
 	c.JSON(200, models.UploadConfirmResponse{
 		VideoID: videoID,
-		Status:  models.VideoStatusQueued,
+		Status:  models.VideoStatusCompleted,
 	})
 }
 

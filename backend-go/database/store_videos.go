@@ -28,7 +28,7 @@ const videoCols = `
 	recorded_at,
 	width,
 	height,
-	detection_status,
+	processing_status,
 	created_at,
 	updated_at,
 	processed_at,
@@ -56,7 +56,7 @@ func scanVideo(row pgx.Row) (*models.Video, error) {
 		&v.RecordedAt,
 		&v.Width,
 		&v.Height,
-		&v.DetectionStatus,
+		&v.ProcessingStatus,
 		&v.CreatedAt,
 		&v.UpdatedAt,
 		&v.ProcessedAt,
@@ -85,17 +85,17 @@ func scanVideos(rows pgx.Rows, allowPartial bool) ([]*models.Video, error) {
 }
 
 // CreateVideo inserts a new video record.
-// If any metadata field is non-nil, detection_status is set to pending (pipeline A will pick it up).
+// If any metadata field is non-nil, processing_status is set to queued (processing pipeline will pick it up).
 func (s *Store) CreateVideo(ctx context.Context, userID int, filename, s3Key, videoURL string, duration *float64, latitude, longitude *float64, recordedAt *time.Time, width, height *int) (*models.Video, error) {
 	const q = `
-	INSERT INTO videos (user_id, filename, s3_key, video_url, status, duration, latitude, longitude, recorded_at, width, height, detection_status)
+	INSERT INTO videos (user_id, filename, s3_key, video_url, status, duration, latitude, longitude, recorded_at, width, height, processing_status)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	RETURNING ` + videoCols
 
-	var detectionStatus *string
+	var processingStatus *string
 	if latitude != nil || longitude != nil || recordedAt != nil || duration != nil {
-		ds := models.VideoDetectionStatusPending
-		detectionStatus = &ds
+		ps := models.VideoProcessingStatusQueued
+		processingStatus = &ps
 	}
 
 	row := s.pool.QueryRow(ctx, q,
@@ -110,7 +110,7 @@ func (s *Store) CreateVideo(ctx context.Context, userID int, filename, s3Key, vi
 		recordedAt,
 		width,
 		height,
-		detectionStatus,
+		processingStatus,
 	)
 	return scanVideo(row)
 }
@@ -153,14 +153,14 @@ func (s *Store) SetVideoSong(ctx context.Context, videoID int, songID int) error
 	return fmt.Errorf("not implemented")
 }
 
-// ClaimPendingDetections atomically claims up to `limit` videos pending concert/song detection (pipeline A).
+// ClaimQueuedProcessing atomically claims up to `limit` queued videos for processing.
 // FOR UPDATE SKIP LOCKED prevents double-claiming across concurrent workers/instances.
-func (s *Store) ClaimPendingDetections(ctx context.Context, limit int) ([]*models.Video, error) {
+func (s *Store) ClaimQueuedProcessing(ctx context.Context, limit int) ([]*models.Video, error) {
 	const q = `
-	UPDATE videos SET detection_status = $1, updated_at = NOW()
+	UPDATE videos SET processing_status = $1, updated_at = NOW()
 	WHERE id IN (
 		SELECT id FROM videos
-		WHERE detection_status = $2 AND deleted_at IS NULL
+		WHERE processing_status = $2 AND deleted_at IS NULL
 		ORDER BY created_at, id
 		LIMIT $3
 		FOR UPDATE SKIP LOCKED
@@ -168,8 +168,8 @@ func (s *Store) ClaimPendingDetections(ctx context.Context, limit int) ([]*model
 	RETURNING ` + videoCols
 
 	rows, err := s.pool.Query(ctx, q,
-		models.VideoDetectionStatusProcessing,
-		models.VideoDetectionStatusPending,
+		models.VideoProcessingStatusProcessing,
+		models.VideoProcessingStatusQueued,
 		limit,
 	)
 	if err != nil {
@@ -211,30 +211,29 @@ func (s *Store) UpdateVideoMetadata(ctx context.Context, videoID int, meta model
 	return err
 }
 
-// CompleteDetection marks detection_status as completed for a video.
-func (s *Store) CompleteDetection(ctx context.Context, videoID int) error {
+// SetProcessingStatusCompleted marks processing_status as completed for a video.
+func (s *Store) SetProcessingStatusCompleted(ctx context.Context, videoID int) error {
 	const q = `
 	UPDATE videos
-	SET detection_status = $1, updated_at = NOW()
+	SET processing_status = $1, updated_at = NOW()
 	WHERE id = $2`
 
-	_, err := s.pool.Exec(ctx, q, models.VideoDetectionStatusCompleted, videoID)
+	_, err := s.pool.Exec(ctx, q, models.VideoProcessingStatusCompleted, videoID)
 	return err
 }
 
-// FailDetection marks detection_status as failed for a video.
-func (s *Store) FailDetection(ctx context.Context, videoID int) error {
+// SetProcessingStatusFailed marks processing_status as failed for a video.
+func (s *Store) SetProcessingStatusFailed(ctx context.Context, videoID int) error {
 	const q = `
 	UPDATE videos
-	SET detection_status = $1, updated_at = NOW()
+	SET processing_status = $1, updated_at = NOW()
 	WHERE id = $2`
 
-	_, err := s.pool.Exec(ctx, q, models.VideoDetectionStatusFailed, videoID)
+	_, err := s.pool.Exec(ctx, q, models.VideoProcessingStatusFailed, videoID)
 	return err
 }
 
-// CompleteVideo marks a video as completed and sets processed_at to now.
-// Used by pipeline B (post-upload processing) when implemented.
+// CompleteVideo marks a video upload as completed and sets processed_at to now.
 func (s *Store) CompleteVideo(ctx context.Context, videoID int) error {
 	const q = `
 	UPDATE videos
@@ -245,12 +244,12 @@ func (s *Store) CompleteVideo(ctx context.Context, videoID int) error {
 	return err
 }
 
-// ResetStuckDetectingVideos resets videos stuck in detection_status = processing back to pending.
-func (s *Store) ResetStuckDetectingVideos(ctx context.Context, stuckAfter time.Duration) error {
+// ResetStuckProcessingVideos resets videos stuck in processing_status = processing back to queued.
+func (s *Store) ResetStuckProcessingVideos(ctx context.Context, stuckAfter time.Duration) error {
 	const q = `
-	UPDATE videos SET detection_status = $1, updated_at = NOW()
-	WHERE detection_status = $2 AND deleted_at IS NULL AND updated_at < $3`
+	UPDATE videos SET processing_status = $1, updated_at = NOW()
+	WHERE processing_status = $2 AND deleted_at IS NULL AND updated_at < $3`
 	cutoff := time.Now().Add(-stuckAfter)
-	_, err := s.pool.Exec(ctx, q, models.VideoDetectionStatusPending, models.VideoDetectionStatusProcessing, cutoff)
+	_, err := s.pool.Exec(ctx, q, models.VideoProcessingStatusQueued, models.VideoProcessingStatusProcessing, cutoff)
 	return err
 }

@@ -80,7 +80,7 @@ func main() {
 	artistHandler := handlers.NewArtistHandler(artistService)
 	songHandler := handlers.NewSongHandler(songService)
 
-	// start job queue for pipeline A (concert/song detection)
+	// start job queue for video processing pipeline
 	processingService := services.NewProcessingService(store)
 	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.Interval, cfg.Concurrency.StuckThreshold)
 	jobQueue.Start(ctx)
