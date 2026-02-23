@@ -71,18 +71,13 @@ func main() {
 	searchService := services.NewSearchService()
 	artistService := services.NewArtistService(store, searchService)
 	songService := services.NewSongService(store, searchService)
-	// mediaService, err := services.NewMediaService()
-	// if err != nil {
-	// 	log.Fatalf("Failed to create media service %v", err)
-	// }
-
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
 	videoHandler := handlers.NewVideoHandler(videoService)
 	artistHandler := handlers.NewArtistHandler(artistService)
 	songHandler := handlers.NewSongHandler(songService)
 
-	// start job queue for background processing
+	// start job queue for video processing pipeline
 	processingService := services.NewProcessingService(store)
 	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.Interval, cfg.Concurrency.StuckThreshold)
 	jobQueue.Start(ctx)

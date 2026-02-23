@@ -36,21 +36,23 @@ func NewVideoService(store *database.Store, s3Client *s3.Client, bucket string, 
 		cdnURL:   cdnURL,
 	}
 }
-func (s *VideoService) InitUpload(ctx context.Context, userID int, filename string, contentType string, sizeBytes int64) (*InitUploadResult, error) {
-    if !strings.HasPrefix(contentType, "video/") {
-        return nil, fmt.Errorf("invalid content type: %s, must be a video", contentType)
+// InitUpload takes the full UploadInitRequest because all fields are needed together
+// and UploadInitRequest lives in models (not the handler layer), keeping the coupling acceptable.
+func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.UploadInitRequest) (*InitUploadResult, error) {
+    if !strings.HasPrefix(req.ContentType, "video/") {
+        return nil, fmt.Errorf("invalid content type: %s, must be a video", req.ContentType)
     }
-    if sizeBytes > MaxFileSize {
+    if req.SizeBytes > MaxFileSize {
         return nil, fmt.Errorf("file too large: max size is 5TB")
     }
 
-    partSize := CalculatePartSize(sizeBytes)
-    partCount := CalculatePartCount(sizeBytes, partSize)
+    partSize := CalculatePartSize(req.SizeBytes)
+    partCount := CalculatePartCount(req.SizeBytes, partSize)
 
     // generate unique S3 key
-    key := fmt.Sprintf("users/%d/videos/%s/%s", userID, uuid.New().String(), filename)
+    key := fmt.Sprintf("users/%d/videos/%s/%s", userID, uuid.New().String(), req.Filename)
 
-    uploadID, err := s.uploadService.CreateMultipartUpload(ctx, key, contentType)
+    uploadID, err := s.uploadService.CreateMultipartUpload(ctx, key, req.ContentType)
     if err != nil {
         return nil, err
     }
@@ -62,7 +64,7 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, filename stri
     }
 
     videoURL := fmt.Sprintf("%s/%s", s.cdnURL, key)
-    video, err := s.store.CreateVideo(ctx, userID, filename, key, videoURL)
+    video, err := s.store.CreateVideo(ctx, userID, req.Filename, key, videoURL, req.Duration, req.Latitude, req.Longitude, req.RecordedAt, req.Width, req.Height)
     if err != nil {
         s.uploadService.AbortMultipartUpload(ctx, key, uploadID)
         return nil, err
@@ -102,8 +104,8 @@ func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID in
 		return fmt.Errorf("failed to complete S3 upload: %w", err)
 	}
 
-	// Update video status to queued (ready for processing)
-	if _, err := s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusQueued); err != nil {
+	// Update video status to completed (upload done)
+	if _, err := s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusCompleted); err != nil {
 		return fmt.Errorf("failed to update video status: %w", err)
 	}
 
