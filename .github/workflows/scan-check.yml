@@ -1,0 +1,32 @@
+name: Scan
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend-go/**"
+      - ".github/workflows/scan-check.yml"
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend-go/go.mod
+          cache-dependency-path: backend-go/go.sum
+
+      - name: Vet
+        working-directory: backend-go
+        run: go vet ./...
+
+      - name: Vulnerability scan
+        working-directory: backend-go
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...

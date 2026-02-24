@@ -1,0 +1,6 @@
+.env
+*.env
+.air.toml
+server.exe
+server
+tmp/

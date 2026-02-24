@@ -1,0 +1,71 @@
+name: Deploy
+
+# Triggers on pushes to main, but only when files inside backend-go/ or this workflow
+# file itself are changed. This means pushing frontend, README, or migration-only changes
+# will NOT trigger a deploy — only actual backend code changes will.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend-go/**"      # any file under the Go backend directory
+      - ".github/workflows/deploy.yml"  # or if the pipeline itself is updated
+
+env:
+  IMAGE_NAME: ghcr.io/areeeeeeeb/relive-backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read  # needed to checkout the repo
+      packages: write # needed to push to GHCR under the repo owner's namespace
+
+    steps:
+      # Check out the repo so the workflow has access to the source code
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Authenticate with GitHub Container Registry using the built-in GITHUB_TOKEN.
+      # No PAT needed since the image namespace matches the repo owner (areeeeeeeb).
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Required for build-push-action to support platform targeting
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build the Docker image from backend-go/Dockerfile and push two tags:
+      # - :latest for DigitalOcean to pull on deploy
+      # - :<commit-sha> for rollback traceability
+      # platform is explicitly set to linux/amd64 — DO App Platform requires this.
+      # Without it, builds from Apple Silicon Macs produce ARM64 images which DO rejects.
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend-go
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.IMAGE_NAME }}:latest,${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # Scan the pushed image for OS and dependency CVEs.
+      # Only CRITICAL severity fails the deploy — lower severity is reported but allowed.
+      # If this step fails, the DO deploy below is skipped, preventing a vulnerable image going live.
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:latest
+          exit-code: 1
+          severity: CRITICAL
+
+      # Tell DigitalOcean App Platform to pull the new :latest image and redeploy.
+      # DO_APP_ID identifies the App Platform app, DO_API_TOKEN authenticates the request.
+      - name: Trigger DigitalOcean deployment
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.DO_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            "https://api.digitalocean.com/v2/apps/${{ secrets.DO_APP_ID }}/deployments"

@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Automatically open PRs for Go dependency updates once a week.
+  # Keeps dependencies patched without manual monitoring.
+  - package-ecosystem: gomod
+    directory: /backend-go
+    schedule:
+      interval: weekly
+      day: monday
+    # Group all non-major updates into a single PR to reduce noise
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Also track GitHub Actions version updates
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
