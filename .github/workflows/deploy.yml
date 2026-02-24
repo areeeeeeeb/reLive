@@ -44,7 +44,7 @@ jobs:
       # platform is explicitly set to linux/amd64 — DO App Platform requires this.
       # Without it, builds from Apple Silicon Macs produce ARM64 images which DO rejects.
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend-go
           push: true
