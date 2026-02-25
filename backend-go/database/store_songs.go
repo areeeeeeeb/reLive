@@ -48,6 +48,7 @@ func scanSong(row pgx.Row) (*models.Song, error) {
 }
 
 func scanSongs(rows pgx.Rows, allowPartial bool) ([]models.Song, error) {
+	defer rows.Close()
 	songs := make([]models.Song, 0)
 	for rows.Next() {
 		s, err := scanSong(rows)
@@ -91,7 +92,6 @@ func (s *Store) SearchSongs(ctx context.Context, query string, maxResults int) (
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	return scanSongs(rows, true)
 }
