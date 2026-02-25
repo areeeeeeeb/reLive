@@ -153,6 +153,23 @@ func (s *Store) SetVideoSong(ctx context.Context, videoID int, songID int) error
 	return fmt.Errorf("not implemented")
 }
 
+// ListVideosByConcert returns non-deleted videos linked to the given concert.
+func (s *Store) ListVideosByConcert(ctx context.Context, concertID int) ([]*models.Video, error) {
+	const q = `
+	SELECT ` + videoCols + `
+	FROM videos
+	WHERE event_type = $1
+	  AND event_id = $2
+	  AND deleted_at IS NULL
+	ORDER BY recorded_at ASC NULLS LAST, created_at ASC, id ASC`
+
+	rows, err := s.pool.Query(ctx, q, models.EventTypeConcert, concertID)
+	if err != nil {
+		return nil, err
+	}
+	return scanVideos(rows, true)
+}
+
 // ClaimQueuedProcessing atomically claims up to `limit` queued videos for processing.
 // FOR UPDATE SKIP LOCKED prevents double-claiming across concurrent workers/instances.
 func (s *Store) ClaimQueuedProcessing(ctx context.Context, limit int) ([]*models.Video, error) {

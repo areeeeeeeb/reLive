@@ -67,21 +67,24 @@ func main() {
 
 	// add service structs here
 	userService := services.NewUserService(store)
+	concertService := services.NewConcertService(store)
+	actService := services.NewActService(store)
+	songPerformanceService := services.NewSongPerformanceService(store)
 	videoService := services.NewVideoService(store, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
 	searchService := services.NewSearchService()
 	artistService := services.NewArtistService(store, searchService)
 	songService := services.NewSongService(store, searchService)
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
+	concertHandler := handlers.NewConcertHandler(concertService, actService, songPerformanceService, videoService)
 	videoHandler := handlers.NewVideoHandler(videoService)
 	artistHandler := handlers.NewArtistHandler(artistService)
 	songHandler := handlers.NewSongHandler(songService)
 
 	// start job queue for video processing pipeline
-	processingService := services.NewProcessingService(store, nil, nil, )
+	processingService := services.NewProcessingService(store, nil, nil, cfg.Spaces.CdnURL)
 	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.Interval, cfg.Concurrency.StuckThreshold)
 	jobQueue.Start(ctx)
-
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {
@@ -153,6 +156,14 @@ func main() {
 		{
 			songs.GET("/search", songHandler.Search)
 			songs.GET("/:id", songHandler.Get)
+		}
+
+		concerts := v2.Group("/concerts")
+		{
+			concerts.GET("/:id", concertHandler.Get)
+			concerts.GET("/:id/videos", concertHandler.ListVideos)
+			concerts.GET("/:id/acts", concertHandler.ListActs)
+			concerts.GET("/:id/song-performances", concertHandler.ListSongPerformances)
 		}
 	}
 

@@ -46,6 +46,7 @@ func scanArtist(row pgx.Row) (*models.Artist, error) {
 }
 
 func scanArtists(rows pgx.Rows, allowPartial bool) ([]models.Artist, error) {
+	defer rows.Close()
 	artists := make([]models.Artist, 0)
 	for rows.Next() {
 		a, err := scanArtist(rows)
@@ -89,7 +90,6 @@ func (s *Store) SearchArtists(ctx context.Context, query string, maxResults int)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	return scanArtists(rows, true)
 }
