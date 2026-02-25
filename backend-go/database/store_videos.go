@@ -85,18 +85,13 @@ func scanVideos(rows pgx.Rows, allowPartial bool) ([]*models.Video, error) {
 }
 
 // CreateVideo inserts a new video record.
-// If any metadata field is non-nil, processing_status is set to queued (processing pipeline will pick it up).
+// processing_status is intentionally not set here — ConfirmUpload sets it to queued
+// once the S3 upload is complete, ensuring the processor never claims a mid-upload video.
 func (s *Store) CreateVideo(ctx context.Context, userID int, filename, s3Key, videoURL string, duration *float64, latitude, longitude *float64, recordedAt *time.Time, width, height *int) (*models.Video, error) {
 	const q = `
-	INSERT INTO videos (user_id, filename, s3_key, video_url, status, duration, latitude, longitude, recorded_at, width, height, processing_status)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	INSERT INTO videos (user_id, filename, s3_key, video_url, status, duration, latitude, longitude, recorded_at, width, height)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	RETURNING ` + videoCols
-
-	var processingStatus *string
-	if latitude != nil || longitude != nil || recordedAt != nil || duration != nil {
-		ps := models.VideoProcessingStatusQueued
-		processingStatus = &ps
-	}
 
 	row := s.pool.QueryRow(ctx, q,
 		userID,
@@ -110,7 +105,6 @@ func (s *Store) CreateVideo(ctx context.Context, userID int, filename, s3Key, vi
 		recordedAt,
 		width,
 		height,
-		processingStatus,
 	)
 	return scanVideo(row)
 }
@@ -168,6 +162,15 @@ func (s *Store) ListVideosByConcert(ctx context.Context, concertID int) ([]*mode
 		return nil, err
 	}
 	return scanVideos(rows, true)
+}
+
+// SetThumbnailURL sets the thumbnail_url for a video.
+func (s *Store) SetThumbnailURL(ctx context.Context, videoID int, url string) error {
+	const q = `
+	UPDATE videos SET thumbnail_url = $1, updated_at = NOW() WHERE id = $2`
+
+	_, err := s.pool.Exec(ctx, q, url, videoID)
+	return err
 }
 
 // ClaimQueuedProcessing atomically claims up to `limit` queued videos for processing.
@@ -228,11 +231,24 @@ func (s *Store) UpdateVideoMetadata(ctx context.Context, videoID int, meta model
 	return err
 }
 
-// SetProcessingStatusCompleted marks processing_status as completed for a video.
+// CompleteUploadAndQueueProcessing atomically marks the upload as completed and queues it for processing.
+// Using a single statement eliminates the partial-failure window where status = 'completed'
+// but processing_status stays NULL, which would leave the video permanently unprocessable.
+func (s *Store) CompleteUploadAndQueueProcessing(ctx context.Context, videoID int) error {
+	const q = `
+	UPDATE videos
+	SET status = $1, processing_status = $2, updated_at = NOW()
+	WHERE id = $3`
+
+	_, err := s.pool.Exec(ctx, q, models.VideoStatusCompleted, models.VideoProcessingStatusQueued, videoID)
+	return err
+}
+
+// SetProcessingStatusCompleted marks processing_status as completed and records processed_at for a video.
 func (s *Store) SetProcessingStatusCompleted(ctx context.Context, videoID int) error {
 	const q = `
 	UPDATE videos
-	SET processing_status = $1, updated_at = NOW()
+	SET processing_status = $1, processed_at = NOW(), updated_at = NOW()
 	WHERE id = $2`
 
 	_, err := s.pool.Exec(ctx, q, models.VideoProcessingStatusCompleted, videoID)
@@ -247,17 +263,6 @@ func (s *Store) SetProcessingStatusFailed(ctx context.Context, videoID int) erro
 	WHERE id = $2`
 
 	_, err := s.pool.Exec(ctx, q, models.VideoProcessingStatusFailed, videoID)
-	return err
-}
-
-// CompleteVideo marks a video upload as completed and sets processed_at to now.
-func (s *Store) CompleteVideo(ctx context.Context, videoID int) error {
-	const q = `
-	UPDATE videos
-	SET status = $1, processed_at = NOW(), updated_at = NOW()
-	WHERE id = $2`
-
-	_, err := s.pool.Exec(ctx, q, models.VideoStatusCompleted, videoID)
 	return err
 }
 

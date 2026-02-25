@@ -8,7 +8,6 @@ import (
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
 	"github.com/areeeeeeeb/reLive/backend-go/models"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 )
 
@@ -19,7 +18,6 @@ const (
 type VideoService struct {
 	store         *database.Store
 	uploadService *UploadService // upload_service handles s3 interactions
-	cdnURL        string
 }
 
 // InitUploadResult is the domain result of initiating an upload
@@ -30,11 +28,10 @@ type InitUploadResult struct {
 	PartSize int64
 }
 
-func NewVideoService(store *database.Store, s3Client *s3.Client, bucket string, cdnURL string) *VideoService {
+func NewVideoService(store *database.Store, upload *UploadService) *VideoService {
 	return &VideoService{
 		store:         store,
-		uploadService: NewUploadService(s3Client, bucket),
-		cdnURL:        cdnURL,
+		uploadService: upload,
 	}
 }
 
@@ -65,7 +62,7 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.U
 		return nil, err
 	}
 
-	videoURL := fmt.Sprintf("%s/%s", s.cdnURL, key)
+	videoURL := s.uploadService.CDNURL(key)
 	video, err := s.store.CreateVideo(ctx, userID, req.Filename, key, videoURL, req.Duration, req.Latitude, req.Longitude, req.RecordedAt, req.Width, req.Height)
 	if err != nil {
 		s.uploadService.AbortMultipartUpload(ctx, key, uploadID)
@@ -106,9 +103,9 @@ func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID in
 		return fmt.Errorf("failed to complete S3 upload: %w", err)
 	}
 
-	// Update video status to completed (upload done)
-	if _, err := s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusCompleted); err != nil {
-		return fmt.Errorf("failed to update video status: %w", err)
+	// Atomically mark upload completed and queue for processing.
+	if err := s.store.CompleteUploadAndQueueProcessing(ctx, videoID); err != nil {
+		return fmt.Errorf("failed to complete and queue video: %w", err)
 	}
 
 	return nil

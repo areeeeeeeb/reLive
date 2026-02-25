@@ -2,35 +2,28 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"time"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 )
 
-// UploadService needs two new methods for ProcessingService to use:
-//   - PresignGet(ctx, s3Key string) (url string, err error)
-//       presignClient.PresignGetObject — TTL of 15min covers worst-case processing time.
-//   - PutObject(ctx, key string, data []byte, contentType string) (url string, err error)
-//       s3Client.PutObject with bytes.NewReader(data) — returns the CDN URL of the uploaded object.
-//
-// store_videos.go needs one new method:
-//   - SetThumbnailURL(ctx, videoID int, url string) error
-//       UPDATE videos SET thumbnail_url = $1, updated_at = NOW() WHERE id = $2
-//
-// CreateVideo (store_videos.go) should stop setting processing_status = queued conditionally.
-// ConfirmUpload (video_service.go) should always set processing_status = queued after CompleteMultipartUpload.
-// This means every confirmed video gets a thumbnail, and the race condition
-// (processor claiming a video mid-upload) is eliminated by design rather than papered over.
+const (
+	thumbnailOffsetFraction = 0.10            // extract frame at 10% into the video
+	thumbnailOffsetFallback = 5.0             // seconds — used when duration is unknown
+	presignGetTTL           = 15 * time.Minute // presigned URL TTL — must outlive worst-case ffprobe + ffmpeg time
+)
 
 type ProcessingService struct {
-	store   *database.Store
-	media   *MediaService
-	upload  *UploadService
-	cdnURL  string
+	store  *database.Store
+	media  *MediaService
+	upload *UploadService
 }
 
-func NewProcessingService(store *database.Store, media *MediaService, upload *UploadService, cdnURL string) *ProcessingService {
-	return &ProcessingService{store: store, media: media, upload: upload, cdnURL: cdnURL}
+func NewProcessingService(store *database.Store, media *MediaService, upload *UploadService) *ProcessingService {
+	return &ProcessingService{store: store, media: media, upload: upload}
 }
 
 // Process runs the processing pipeline for a single video.
@@ -38,33 +31,52 @@ func NewProcessingService(store *database.Store, media *MediaService, upload *Up
 // On success, marks processing_status = 'completed'. On failure, JobQueueService marks it 'failed'.
 func (ps *ProcessingService) Process(ctx context.Context, video *models.Video) error {
 
-	// step 1: generate a presigned GET URL for the S3 object (video.S3Key).
-	// ffprobe and ffmpeg both accept URLs directly — no need to download the file to disk.
-	// presigned URL should have a TTL long enough to cover the full processing time 
 
-	// step 2 (conditional): if video.Duration, video.Width, or video.Height are nil,
-	// run ffprobe against the presigned URL via media.ProbeMetadata(ctx, presignedURL).
-	// client already sends these fields via MediaInfo.js at upload init, so on the common path
-	// ffprobe is skipped entirely — no redundant S3 read.
-	// if ffprobe is needed and fails, log and continue — metadata is enrichment, not a hard requirement.
+	// step 1: presign GET — ffprobe and ffmpeg stream from this directly, no disk download needed.
+	presignedURL, err := ps.upload.PresignGet(ctx, video.S3Key, presignGetTTL)
+	if err != nil {
+		return fmt.Errorf("presign GET: %w", err)
+	}
 
-	// step 3 (conditional): if ffprobe ran, call store.UpdateVideoMetadata(ctx, video.ID, metadata).
-	// uses COALESCE — only fills fields that are currently NULL in the DB.
+	// step 2: skip ffprobe if client already sent complete metadata. only probe if any of the core fields are missing.
+	if video.Duration == nil || video.Width == nil || video.Height == nil {
+		meta, err := ps.media.ProbeMetadata(ctx, presignedURL)
+		if err != nil {
+			log.Printf("[processing] video %d: ffprobe failed: %v", video.ID, err)
+		} else {
+			// step 3: fill DB gaps — COALESCE preserves any client-provided values.
+			if err := ps.store.UpdateVideoMetadata(ctx, video.ID, *meta); err != nil {
+				log.Printf("[processing] video %d: UpdateVideoMetadata failed: %v", video.ID, err)
+			}
+			// carry ffprobe duration forward for offset calculation below
+			if video.Duration == nil {
+				video.Duration = meta.Duration
+			}
+		}
+	}
 
 	// step 4: compute thumbnail offset.
-	// use video.Duration if non-nil (client-provided or ffprobe-extracted), offset = *duration * 0.10.
-	// if duration is still unavailable, fall back to a fixed offset (e.g. 5.0 seconds).
+	offset := thumbnailOffsetFallback
+	if video.Duration != nil {
+		offset = *video.Duration * thumbnailOffsetFraction
+	}
 
-	// step 5: extract a thumbnail frame via media.ExtractFrame(ctx, presignedURL, offset).
-	// returns raw JPEG bytes.
+	// step 5: extract frame
+	frame, err := ps.media.ExtractFrame(ctx, presignedURL, offset)
+	if err != nil {
+		log.Printf("[processing] video %d: ExtractFrame failed: %v", video.ID, err)
+	} else {
+		// step 6: upload thumbnail while persisting URL
+		thumbnailKey := fmt.Sprintf("thumbnails/%d.jpg", video.ID)
+		thumbnailURL, err := ps.upload.PutObject(ctx, thumbnailKey, frame, "image/jpeg")
+		if err != nil {
+			// thumbnail failure is soft — video is still watchable, thumbnail_url stays nil.
+			log.Printf("[processing] video %d: thumbnail upload failed: %v", video.ID, err)
+		} else if err := ps.store.SetThumbnailURL(ctx, video.ID, thumbnailURL); err != nil {
+			log.Printf("[processing] video %d: SetThumbnailURL failed: %v", video.ID, err)
+		}
+	}
 
-	// step 6: upload the JPEG to S3 at key "thumbnails/{video.ID}.jpg" via upload.PutObject.
-	// content-type: image/jpeg.
-	// construct public URL as fmt.Sprintf("%s/thumbnails/%d.jpg", ps.cdnURL, video.ID).
-
-	// step 7: store.SetThumbnailURL(ctx, video.ID, thumbnailURL).
-
-	// step 8: store.SetProcessingStatusCompleted(ctx, video.ID).
-
+	// step 7: mark processing complete regardless of thumbnail outcome.
 	return ps.store.SetProcessingStatusCompleted(ctx, video.ID)
 }

@@ -78,8 +78,8 @@ func (s *Store) UpsertUser(ctx context.Context, user *models.User) (*models.User
 		email = EXCLUDED.email,
 		username = EXCLUDED.username,
 		display_name = EXCLUDED.display_name,
-		profile_picture = EXCLUDED.profile_picture,
-		bio = EXCLUDED.bio,
+		profile_picture = COALESCE(users.profile_picture, EXCLUDED.profile_picture),
+		bio = COALESCE(users.bio, EXCLUDED.bio),
 		updated_at = NOW()
 	RETURNING ` + userCols
 

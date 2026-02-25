@@ -1,8 +1,10 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -45,14 +47,21 @@ type UploadService struct {
 	s3Client      *s3.Client
 	presignClient *s3.PresignClient
 	bucket        string
+	cdnURL        string
 }
 
-func NewUploadService(s3Client *s3.Client, bucket string) *UploadService {
+func NewUploadService(s3Client *s3.Client, bucket string, cdnURL string) *UploadService {
 	return &UploadService{
 		s3Client:      s3Client,
 		presignClient: s3.NewPresignClient(s3Client),
 		bucket:        bucket,
+		cdnURL:        cdnURL,
 	}
+}
+
+// CDNURL returns the public CDN URL for a given S3 key.
+func (s *UploadService) CDNURL(key string) string {
+	return fmt.Sprintf("%s/%s", s.cdnURL, key)
 }
 
 // CreateMultipartUpload initiates a multipart upload and returns the upload ID
@@ -71,7 +80,7 @@ func (s *UploadService) CreateMultipartUpload(ctx context.Context, key string, c
 // GeneratePresignedUrls generates presigned URLs for each part of the multipart upload
 func (s *UploadService) GeneratePresignedPartUrls(ctx context.Context, key string, uploadID string, partCount int) ([]string, error) {
 	urls := make([]string, partCount)
-	for i := 0; i < partCount; i++ {
+	for i := range partCount {
 		partNumber := int32(i + 1)
 		presigned, err := s.presignClient.PresignUploadPart(ctx, &s3.UploadPartInput{
 			Bucket:   aws.String(s.bucket),
@@ -123,4 +132,31 @@ func (s *UploadService) CompleteMultipartUpload(ctx context.Context, key string,
 		return fmt.Errorf("failed to complete multipart upload: %w", err)
 	}
 	return nil
+}
+
+// PresignGet returns a presigned GET URL for the given S3 key, valid for ttl duration.
+// ffprobe and ffmpeg can stream directly from this URL without downloading the file.
+func (s *UploadService) PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error) {
+	presigned, err := s.presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}, s3.WithPresignExpires(ttl))
+	if err != nil {
+		return "", fmt.Errorf("failed to presign GET for %s: %w", key, err)
+	}
+	return presigned.URL, nil
+}
+
+// PutObject uploads data to the given S3 key and returns the CDN URL.
+func (s *UploadService) PutObject(ctx context.Context, key string, data []byte, contentType string) (string, error) {
+	_, err := s.s3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(data),
+		ContentType: aws.String(contentType),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to put object %s: %w", key, err)
+	}
+	return s.CDNURL(key), nil
 }

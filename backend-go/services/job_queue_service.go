@@ -18,7 +18,7 @@ type JobQueueService struct {
 	processing     *ProcessingService
 	pool           *workers.Pool
 	scheduler      *workers.Scheduler
-	stuckThreshold int // minutes
+	stuckThreshold time.Duration
 }
 
 func NewJobQueueService(store *database.Store, processing *ProcessingService, concurrency, queueSize, intervalSecs, stuckThresholdMins int) *JobQueueService {
@@ -26,7 +26,7 @@ func NewJobQueueService(store *database.Store, processing *ProcessingService, co
 		store:          store,
 		processing:     processing,
 		pool:           workers.NewPool("processing", concurrency, queueSize),
-		stuckThreshold: stuckThresholdMins,
+		stuckThreshold: time.Duration(stuckThresholdMins) * time.Minute,
 	}
 
 	jqs.scheduler = workers.NewScheduler("processing", jqs.pool, jqs.fetch, time.Duration(intervalSecs)*time.Second)
@@ -45,7 +45,7 @@ func (jqs *JobQueueService) Start(ctx context.Context) {
 // Also resets videos stuck in processing_status = 'processing' on every tick,
 // so crashed workers are recovered without requiring a server restart.
 func (jqs *JobQueueService) fetch(ctx context.Context, limit int) ([]workers.Job, error) {
-	if err := jqs.store.ResetStuckProcessingVideos(ctx, time.Duration(jqs.stuckThreshold)*time.Minute); err != nil {
+	if err := jqs.store.ResetStuckProcessingVideos(ctx, jqs.stuckThreshold); err != nil {
 		log.Printf("[job-queue] failed to reset stuck processing jobs: %v", err)
 	}
 

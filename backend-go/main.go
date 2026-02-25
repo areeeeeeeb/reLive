@@ -70,7 +70,8 @@ func main() {
 	concertService := services.NewConcertService(store)
 	actService := services.NewActService(store)
 	songPerformanceService := services.NewSongPerformanceService(store)
-	videoService := services.NewVideoService(store, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
+	uploadService := services.NewUploadService(s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
+	videoService := services.NewVideoService(store, uploadService)
 	searchService := services.NewSearchService()
 	artistService := services.NewArtistService(store, searchService)
 	songService := services.NewSongService(store, searchService)
@@ -82,7 +83,11 @@ func main() {
 	songHandler := handlers.NewSongHandler(songService)
 
 	// start job queue for video processing pipeline
-	processingService := services.NewProcessingService(store, nil, nil, cfg.Spaces.CdnURL)
+	mediaService, err := services.NewMediaService()
+	if err != nil {
+		log.Fatalf("Failed to initialize media service: %v", err)
+	}
+	processingService := services.NewProcessingService(store, mediaService, uploadService)
 	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.Interval, cfg.Concurrency.StuckThreshold)
 	jobQueue.Start(ctx)
 

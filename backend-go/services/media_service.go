@@ -13,6 +13,11 @@ import (
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 )
 
+const (
+	ffmpegFrameCount  = "1" // extract exactly one frame
+	ffmpegJPEGQuality = "3" // JPEG quality scale: 1 (best) – 31 (worst)
+)
+
 // MediaService is a stateless wrapper around video bytes processing tools.
 // No DB, no S3, no domain knowledge. Takes file paths, returns raw data.
 type MediaService struct{}
@@ -109,7 +114,7 @@ func parseGPSFromTag(tag string) models.GPSCoordinates {
 	return models.GPSCoordinates{Latitude: lat, Longitude: lng}
 }
 
-// ProbeMetadata runs ffprobe on a local file and returns parsed metadata.
+// ProbeMetadata runs ffprobe on the given URL or file path and returns parsed metadata.
 func (m *MediaService) ProbeMetadata(ctx context.Context, filePath string) (*models.VideoMetadata, error) {
 	cmd := exec.CommandContext(ctx, "ffprobe",
 		"-v", "error",
@@ -162,15 +167,15 @@ func (m *MediaService) ProbeMetadata(ctx context.Context, filePath string) (*mod
 	return metadata, nil
 }
 
-// ExtractFrame extracts a single JPEG frame at the given offset (seconds).
+// ExtractFrame extracts a single JPEG frame from the given URL or file path at the given offset (seconds).
 func (m *MediaService) ExtractFrame(ctx context.Context, filePath string, offsetSeconds float64) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "ffmpeg",
 		"-ss", fmt.Sprintf("%.2f", offsetSeconds), // -ss before -i is fast seek. fast but may be slightly off
 		"-i", filePath,
-		"-frames:v", "1",   // output exactly 1 frame
-		"-f", "image2",     // output format
-		"-c:v", "mjpeg",    // codec
-		"-q:v", "3",        // quality
+		"-frames:v", ffmpegFrameCount, // output exactly 1 frame
+		"-f", "image2",                // output format
+		"-c:v", "mjpeg",               // codec
+		"-q:v", ffmpegJPEGQuality,     // quality
 		"pipe:1",           // output JPEG bytes to stdout, so we can output with cmd.Output()
 	)
 
