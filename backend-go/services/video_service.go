@@ -48,8 +48,8 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.U
 	partSize := CalculatePartSize(req.SizeBytes)
 	partCount := CalculatePartCount(req.SizeBytes, partSize)
 
-	// generate unique S3 key
-	key := fmt.Sprintf("users/%d/videos/%s/%s", userID, uuid.New().String(), req.Filename)
+	// generate unique S3 key: videos/{userID}/{uuid}_{filename}
+	key := fmt.Sprintf("videos/%d/%s_%s", userID, uuid.New().String(), req.Filename)
 
 	uploadID, err := s.uploadService.CreateMultipartUpload(ctx, key, req.ContentType)
 	if err != nil {
