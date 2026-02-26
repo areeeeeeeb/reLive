@@ -41,10 +41,7 @@ type SpacesConfig struct {
 }
 
 type ConcurrencyConfig struct {
-	Concurrency    int
-	QueueSize      int
-	Interval       int // seconds
-	StuckThreshold int // minutes, videos processing longer than this are assumed stuck
+	Concurrency int // max concurrent thumbnail goroutines (semaphore size)
 }
 
 func Load() *Config {
@@ -62,10 +59,7 @@ func Load() *Config {
 		},
 
 		Concurrency: ConcurrencyConfig{
-			Concurrency:    getEnvInt("POOL_CONCURRENCY", 20),
-			QueueSize:      getEnvInt("POOL_QUEUE_SIZE", 50),
-			Interval:       getEnvInt("POLL_INTERVAL_SECONDS", 10),
-			StuckThreshold: getEnvInt("STUCK_THRESHOLD_MINUTES", 30),
+			Concurrency: getEnvInt("POOL_CONCURRENCY", 20),
 		},
 		
 		Auth0: Auth0Config{

@@ -28,7 +28,8 @@ type Video struct {
     Width        *int       `db:"width" json:"width"`
     Height       *int       `db:"height" json:"height"`
 
-	ProcessingStatus *string    `db:"processing_status" json:"processing_status,omitempty"`
+	ThumbnailStatus *string    `db:"thumbnail_status" json:"thumbnail_status,omitempty"`
+	DetectionStatus *string    `db:"detection_status" json:"detection_status,omitempty"`
 
 	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`
@@ -52,12 +53,18 @@ const (
 	EventTypeConcert = "concert"
 )
 
-// Video processing status constants — tracks the processing pipeline independently of upload status
+// Video thumbnail pipeline status constants — tracks thumbnail extraction independently of upload status
 const (
-	VideoProcessingStatusQueued     = "queued"
-	VideoProcessingStatusProcessing = "processing"
-	VideoProcessingStatusCompleted  = "completed"
-	VideoProcessingStatusFailed     = "failed"
+	VideoThumbnailStatusQueued     = "queued"
+	VideoThumbnailStatusProcessing = "processing"
+	VideoThumbnailStatusCompleted  = "completed"
+	VideoThumbnailStatusFailed     = "failed"
+)
+
+// Video detection status constants — set after concert/detect is called
+const (
+	VideoDetectionStatusDetected    = "detected"
+	VideoDetectionStatusNotDetected = "not_detected"
 )
 
 // VideoMetadata extracted from video file.

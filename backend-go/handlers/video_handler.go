@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"strconv"
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
@@ -46,6 +47,7 @@ func (h *VideoHandler) UploadInit(c *gin.Context) {
 		&req,
 	)
 	if err != nil {
+		log.Printf("[upload-init] error: %v", err)
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -65,7 +67,6 @@ func (h *VideoHandler) UploadConfirm(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	// LATER: WRITE A FUNCTION IN VIDEOHANDLER TO VALIDATE VIDEOID, UPLOADID, PARTS
 
 	userID := c.GetInt("user_id")
 	if userID == 0 {
@@ -73,15 +74,12 @@ func (h *VideoHandler) UploadConfirm(c *gin.Context) {
 		return
 	}
 
-	// Get video ID from URL parameter
-	
 	videoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid video ID"})
 		return
 	}
 
-	// Confirm upload
 	if err := h.videoService.ConfirmUpload(c.Request.Context(), videoID, userID, req.UploadID, req.Parts); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

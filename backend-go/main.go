@@ -71,25 +71,24 @@ func main() {
 	actService := services.NewActService(store)
 	songPerformanceService := services.NewSongPerformanceService(store)
 	uploadService := services.NewUploadService(s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
-	videoService := services.NewVideoService(store, uploadService)
 	searchService := services.NewSearchService()
 	artistService := services.NewArtistService(store, searchService)
 	songService := services.NewSongService(store, searchService)
-	// add handler structs here
-	userHandler := handlers.NewUserHandler(userService)
-	concertHandler := handlers.NewConcertHandler(concertService, actService, songPerformanceService, videoService)
-	videoHandler := handlers.NewVideoHandler(videoService)
-	artistHandler := handlers.NewArtistHandler(artistService)
-	songHandler := handlers.NewSongHandler(songService)
+	detectionService := services.NewDetectionService(store)
 
-	// start job queue for video processing pipeline
 	mediaService, err := services.NewMediaService()
 	if err != nil {
 		log.Fatalf("Failed to initialize media service: %v", err)
 	}
-	processingService := services.NewProcessingService(store, mediaService, uploadService)
-	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.Interval, cfg.Concurrency.StuckThreshold)
-	jobQueue.Start(ctx)
+	thumbnailService := services.NewThumbnailService(ctx, store, mediaService, uploadService, cfg.Concurrency.Concurrency)
+	videoService := services.NewVideoService(store, uploadService, thumbnailService)
+
+	// add handler structs here
+	userHandler := handlers.NewUserHandler(userService)
+	concertHandler := handlers.NewConcertHandler(concertService, actService, songPerformanceService, videoService, detectionService)
+	videoHandler := handlers.NewVideoHandler(videoService)
+	artistHandler := handlers.NewArtistHandler(artistService)
+	songHandler := handlers.NewSongHandler(songService)
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {
@@ -145,6 +144,7 @@ func main() {
 			{
 				videosResolved.POST("/upload/init", videoHandler.UploadInit)
 				videosResolved.POST("/:id/upload/confirm", videoHandler.UploadConfirm)
+				videosResolved.POST("/:id/concert/detect", concertHandler.DetectForVideo)
 				videosResolved.DELETE("/:id", videoHandler.Delete)
 			}
 		}

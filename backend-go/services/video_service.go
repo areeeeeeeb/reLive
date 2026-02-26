@@ -17,7 +17,8 @@ const (
 
 type VideoService struct {
 	store         *database.Store
-	uploadService *UploadService // upload_service handles s3 interactions
+	uploadService *UploadService
+	thumbnail     *ThumbnailService
 }
 
 // InitUploadResult is the domain result of initiating an upload
@@ -28,10 +29,12 @@ type InitUploadResult struct {
 	PartSize int64
 }
 
-func NewVideoService(store *database.Store, upload *UploadService) *VideoService {
+// thumbnail may be nil — callers that don't need thumbnail extraction (e.g. tests) can pass nil.
+func NewVideoService(store *database.Store, upload *UploadService, thumbnail *ThumbnailService) *VideoService {
 	return &VideoService{
 		store:         store,
 		uploadService: upload,
+		thumbnail:     thumbnail,
 	}
 }
 
@@ -77,38 +80,43 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.U
 	}, nil
 }
 
-// ConfirmUpload completes a multipart upload and updates video status
+// ConfirmUpload completes a multipart upload, marks the video as completed,
+// and immediately queues thumbnail extraction via ThumbnailService.
 func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID int, uploadID string, parts []models.UploadPart) error {
-	// Get video to verify ownership and get S3 key
 	video, err := s.store.GetVideoByID(ctx, videoID)
 	if err != nil {
 		return fmt.Errorf("video not found: %w", err)
 	}
 
-	// Verify user owns this video
 	if video.UserID != userID {
 		return fmt.Errorf("unauthorized: video does not belong to user")
 	}
 
-	// Verify video is in correct status
 	if video.Status != models.VideoStatusPendingUpload {
 		return fmt.Errorf("video is not in pending_upload status (current: %s)", video.Status)
 	}
 
-	// Complete multipart upload in S3
 	if err := s.uploadService.CompleteMultipartUpload(ctx, video.S3Key, uploadID, parts); err != nil {
-		// Cleanup: abort S3 upload and mark video as failed (best effort)
 		_ = s.uploadService.AbortMultipartUpload(ctx, video.S3Key, uploadID)
 		_, _ = s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusFailed)
 		return fmt.Errorf("failed to complete S3 upload: %w", err)
 	}
 
-	// Atomically mark upload completed and queue for processing.
-	if err := s.store.CompleteUploadAndQueueProcessing(ctx, videoID); err != nil {
+	if err := s.store.CompleteUploadAndQueueThumbnail(ctx, videoID); err != nil {
 		return fmt.Errorf("failed to complete and queue video: %w", err)
 	}
 
+	// thumbnail may be nil in test environments where ffmpeg is unavailable.
+	if s.thumbnail != nil {
+		s.thumbnail.ExtractAsync(video)
+	}
+
 	return nil
+}
+
+// GetByID retrieves a video by its ID.
+func (s *VideoService) GetByID(ctx context.Context, videoID int) (*models.Video, error) {
+	return s.store.GetVideoByID(ctx, videoID)
 }
 
 // SetConcert links a video to a concert

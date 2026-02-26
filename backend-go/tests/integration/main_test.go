@@ -71,20 +71,21 @@ func TestMain(m *testing.M) {
 	store := database.NewStore(pool, cfg.Store.SearchTrgmSimilarityThreshold)
 	uploadService := newUploadService(cfg)
 
-	// Wire services — mirrors main.go, minus the job queue.
+	// Wire services — mirrors main.go, minus thumbnail service (no ffmpeg in test env).
 	userService := services.NewUserService(store)
 	concertService := services.NewConcertService(store)
 	actService := services.NewActService(store)
 	songPerformanceService := services.NewSongPerformanceService(store)
-	videoService := services.NewVideoService(store, uploadService)
 	searchService := services.NewSearchService()
 	artistService := services.NewArtistService(store, searchService)
 	songService := services.NewSongService(store, searchService)
+	detectionService := services.NewDetectionService(store)
+	videoService := services.NewVideoService(store, uploadService, nil)
 
 	authMW := middleware.DevAuthBypass(devAuth0ID)
 
 	userHandler := handlers.NewUserHandler(userService)
-	concertHandler := handlers.NewConcertHandler(concertService, actService, songPerformanceService, videoService)
+	concertHandler := handlers.NewConcertHandler(concertService, actService, songPerformanceService, videoService, detectionService)
 	videoHandler := handlers.NewVideoHandler(videoService)
 	artistHandler := handlers.NewArtistHandler(artistService)
 	songHandler := handlers.NewSongHandler(songService)
