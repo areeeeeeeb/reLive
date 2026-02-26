@@ -33,7 +33,7 @@ func scanConcert(row pgx.Row) (*models.Concert, error) {
 		&c.DeletedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperr.ErrConcertNotFound
+			return nil, apperr.ErrNotFound
 		}
 		return nil, err
 	}

@@ -30,7 +30,7 @@ func (s *ActService) ListByConcert(ctx context.Context, concertID int) ([]models
 		return nil, err
 	}
 	if !exists {
-		return nil, apperr.ErrConcertNotFound
+		return nil, apperr.ErrNotFound
 	}
 	return acts, nil
 }

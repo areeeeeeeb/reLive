@@ -39,7 +39,7 @@ func (h *ConcertHandler) Get(c *gin.Context) {
 
 	result, err := h.concertService.Get(c.Request.Context(), concertID)
 	if err != nil {
-		if errors.Is(err, apperr.ErrConcertNotFound) {
+		if errors.Is(err, apperr.ErrNotFound) {
 			c.JSON(404, gin.H{"error": "concert not found"})
 			return
 		}
@@ -59,7 +59,7 @@ func (h *ConcertHandler) ListActs(c *gin.Context) {
 
 	result, err := h.actService.ListByConcert(c.Request.Context(), concertID)
 	if err != nil {
-		if errors.Is(err, apperr.ErrConcertNotFound) {
+		if errors.Is(err, apperr.ErrNotFound) {
 			c.JSON(404, gin.H{"error": "concert not found"})
 			return
 		}
@@ -79,7 +79,7 @@ func (h *ConcertHandler) ListSongPerformances(c *gin.Context) {
 
 	result, err := h.songPerformanceService.ListByConcert(c.Request.Context(), concertID)
 	if err != nil {
-		if errors.Is(err, apperr.ErrConcertNotFound) {
+		if errors.Is(err, apperr.ErrNotFound) {
 			c.JSON(404, gin.H{"error": "concert not found"})
 			return
 		}
@@ -99,7 +99,7 @@ func (h *ConcertHandler) ListVideos(c *gin.Context) {
 
 	result, err := h.videoService.ListByConcert(c.Request.Context(), concertID)
 	if err != nil {
-		if errors.Is(err, apperr.ErrConcertNotFound) {
+		if errors.Is(err, apperr.ErrNotFound) {
 			c.JSON(404, gin.H{"error": "concert not found"})
 			return
 		}

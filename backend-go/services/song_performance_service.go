@@ -30,7 +30,7 @@ func (s *SongPerformanceService) ListByConcert(ctx context.Context, concertID in
 		return nil, err
 	}
 	if !exists {
-		return nil, apperr.ErrConcertNotFound
+		return nil, apperr.ErrNotFound
 	}
 	return performances, nil
 }

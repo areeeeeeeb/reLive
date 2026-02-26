@@ -7,7 +7,6 @@ import "errors"
 var (
 	ErrNotFound        = errors.New("not found")
 	ErrDuplicate       = errors.New("duplicate")
-	ErrConcertNotFound = errors.New("concert not found")
 
 	// config env errors
 	ErrDevBypassAuthNotAllowed              = errors.New("DEV_BYPASS_AUTH cannot be enabled in non-development environments")

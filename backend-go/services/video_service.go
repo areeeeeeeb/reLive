@@ -135,7 +135,7 @@ func (s *VideoService) ListByConcert(ctx context.Context, concertID int) ([]*mod
 		return nil, err
 	}
 	if !exists {
-		return nil, apperr.ErrConcertNotFound
+		return nil, apperr.ErrNotFound
 	}
 	return []*models.Video{}, nil
 }
