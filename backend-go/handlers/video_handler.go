@@ -123,7 +123,7 @@ func (h *VideoHandler) DetectConcert(c *gin.Context) {
 		return
 	}
 
-	result, err := h.detectionService.Detect(c.Request.Context(), videoID, req)
+	result, err := h.detectionService.DetectConcert(c.Request.Context(), videoID, req)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

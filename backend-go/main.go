@@ -80,8 +80,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize media service: %v", err)
 	}
-	thumbnailService := services.NewThumbnailService(ctx, store, mediaService, uploadService, cfg.Concurrency.Concurrency)
-	videoService := services.NewVideoService(store, uploadService, thumbnailService)
+	thumbnailService := services.NewThumbnailService(store, mediaService, uploadService)
+	jobQueue := services.NewJobQueueService(store, thumbnailService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.SchedulerInterval, cfg.Concurrency.StuckThreshold)
+	jobQueue.Start(ctx)
+	videoService := services.NewVideoService(store, uploadService)
 
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)

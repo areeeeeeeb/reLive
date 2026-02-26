@@ -11,28 +11,19 @@ import (
 )
 
 const (
-	thumbnailOffsetFraction  = 0.10             // extract frame at 10% into the video
-	thumbnailOffsetFallback  = 5.0              // seconds — used when duration is unknown
-	presignGetTTL            = 15 * time.Minute
-	recoveryBatchSize        = 1000 			// max amount of thumbnail processing videos claimed among recovery
+	thumbnailOffsetFraction = 0.10             // extract frame at 10% into the video
+	thumbnailOffsetFallback = 5.0              // seconds — used when duration is unknown
+	presignGetTTL           = 15 * time.Minute
 )
 
 type ThumbnailService struct {
 	store  *database.Store
 	media  *MediaService
 	upload *UploadService
-	sem    chan struct{} // semaphore — limits concurrent extraction goroutines
 }
 
-func NewThumbnailService(ctx context.Context, store *database.Store, media *MediaService, upload *UploadService, maxConcurrent int) *ThumbnailService {
-	ts := &ThumbnailService{
-		store:  store,
-		media:  media,
-		upload: upload,
-		sem:    make(chan struct{}, maxConcurrent),
-	}
-	ts.recoverPending(ctx)
-	return ts
+func NewThumbnailService(store *database.Store, media *MediaService, upload *UploadService) *ThumbnailService {
+	return &ThumbnailService{store: store, media: media, upload: upload}
 }
 
 // Extract runs the thumbnail pipeline synchronously for a single video.
@@ -44,7 +35,7 @@ func (ts *ThumbnailService) Extract(ctx context.Context, video *models.Video) er
 		return fmt.Errorf("presign GET: %w", err)
 	}
 
-	// step 2: skip ffprobe if client already sent complete metadata. (there is no guarantee 
+	// step 2: skip ffprobe if client already sent complete metadata. only probe if any of the core fields are missing.
 	if video.Duration == nil || video.Width == nil || video.Height == nil {
 		meta, err := ts.media.ProbeMetadata(ctx, presignedURL)
 		if err != nil {
@@ -85,44 +76,4 @@ func (ts *ThumbnailService) Extract(ctx context.Context, video *models.Video) er
 
 	// step 7: mark thumbnail extraction complete regardless of outcome.
 	return ts.store.SetThumbnailStatusCompleted(ctx, video.ID)
-}
-
-// ExtractAsync spawns a goroutine to run the thumbnail pipeline for the given video.
-func (ts *ThumbnailService) ExtractAsync(video *models.Video) {
-	go func() {
-		// acquires the semaphore to bound concurrency
-		ts.sem <- struct{}{} 
-		defer func() { <-ts.sem }()
-		// uses context.background() so that goroutine outlives HTTP
-		ctx := context.Background()
-		if err := ts.Extract(ctx, video); err != nil {
-			log.Printf("[thumbnail] video %d: async extraction failed: %v", video.ID, err)
-			_ = ts.store.SetThumbnailStatusFailed(ctx, video.ID)
-		}
-	}()
-}
-
-// recoverPending resumes any thumbnail extractions interrupted by a previous crash or restart.
-func (ts *ThumbnailService) recoverPending(ctx context.Context) {
-	// Reset any videos stuck in 'processing' back to 'queued' regardless of age.
-	if err := ts.store.ResetStuckThumbnailVideos(ctx, 0); err != nil {
-		log.Printf("[thumbnail] recovery: failed to reset stuck videos: %v", err)
-		return
-	}
-
-	// Claim queued videos atomically (transitions them to 'processing') and re-spawn.
-	videos, err := ts.store.ClaimQueuedThumbnails(ctx, recoveryBatchSize)
-	if err != nil {
-		log.Printf("[thumbnail] recovery: failed to fetch queued videos: %v", err)
-		return
-	}
-
-	if len(videos) == 0 {
-		return
-	}
-
-	log.Printf("[thumbnail] recovery: re-spawning %d pending thumbnail jobs", len(videos))
-	for _, v := range videos {
-		ts.ExtractAsync(v)
-	}
 }

@@ -18,7 +18,6 @@ const (
 type VideoService struct {
 	store         *database.Store
 	uploadService *UploadService
-	thumbnail     *ThumbnailService
 }
 
 // InitUploadResult is the domain result of initiating an upload
@@ -29,12 +28,10 @@ type InitUploadResult struct {
 	PartSize int64
 }
 
-// thumbnail may be nil — callers that don't need thumbnail extraction (e.g. tests) can pass nil.
-func NewVideoService(store *database.Store, upload *UploadService, thumbnail *ThumbnailService) *VideoService {
+func NewVideoService(store *database.Store, upload *UploadService) *VideoService {
 	return &VideoService{
 		store:         store,
 		uploadService: upload,
-		thumbnail:     thumbnail,
 	}
 }
 
@@ -80,8 +77,8 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.U
 	}, nil
 }
 
-// ConfirmUpload completes a multipart upload, marks the video as completed,
-// and immediately queues thumbnail extraction via ThumbnailService.
+// ConfirmUpload completes a multipart upload and marks the video as completed.
+// Thumbnail extraction is handled asynchronously by JobQueueService.
 func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID int, uploadID string, parts []models.UploadPart) error {
 	video, err := s.store.GetVideoByID(ctx, videoID)
 	if err != nil {
@@ -104,10 +101,6 @@ func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID in
 
 	if err := s.store.SetUploadStatusCompleted(ctx, videoID); err != nil {
 		return fmt.Errorf("failed to set upload status completed: %w", err)
-	}
-	// Fire Goroutine for thumbnail pipeline while upload pipeline continues
-	if s.thumbnail != nil {
-		s.thumbnail.ExtractAsync(video)
 	}
 
 	return nil

@@ -8,9 +8,7 @@ import (
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 )
 
-// DetectionService runs concert detection for a video using client-provided metadata.
-// Detection is triggered explicitly by the client via POST /videos/:id/concert/detect
-// and runs synchronously in the HTTP handler.
+// DetectionService contains all detection logic when the client explicitly triggers a detect request
 type DetectionService struct {
 	store *database.Store
 }
@@ -19,10 +17,10 @@ func NewDetectionService(store *database.Store) *DetectionService {
 	return &DetectionService{store: store}
 }
 
-// Detect attempts to match the video to a concert using the provided metadata.
+// DetectConcert attempts to match the video to a concert using the provided metadata.
 // On completion it persists detection_status on the video and returns the result.
 // Returns a non-nil error only for infrastructure failures (e.g. DB write failed).
-func (ds *DetectionService) Detect(ctx context.Context, videoID int, req models.ConcertDetectRequest) (*models.ConcertDetectResult, error) {
+func (ds *DetectionService) DetectConcert(ctx context.Context, videoID int, req models.ConcertDetectRequest) (*models.ConcertDetectResult, error) {
 	// TODO: implement GPS + timestamp concert matching against concerts table.
 	log.Printf("[detection] video %d: detection not yet implemented", videoID)
 
