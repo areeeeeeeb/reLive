@@ -17,16 +17,12 @@ func NewDetectionService(store *database.Store) *DetectionService {
 	return &DetectionService{store: store}
 }
 
-// DetectConcert attempts to match the video to a concert using the provided metadata.
-// On completion it persists detection_status on the video and returns the result.
-// Returns a non-nil error only for infrastructure failures (e.g. DB write failed).
-func (ds *DetectionService) DetectConcert(ctx context.Context, videoID int, req models.ConcertDetectRequest) (*models.ConcertDetectResult, error) {
+// DetectConcert attempts to match the provided metadata to a concert.
+// Stateless — no DB writes. Returns top candidates ordered by confidence score.
+// Returns a non-nil error only for infrastructure failures (e.g. DB query failed).
+func (ds *DetectionService) DetectConcert(ctx context.Context, req models.ConcertDetectRequest) (*models.ConcertDetectResult, error) {
 	// TODO: implement GPS + timestamp concert matching against concerts table.
-	log.Printf("[detection] video %d: detection not yet implemented", videoID)
-
-	if err := ds.store.SetDetectionStatus(ctx, videoID, models.VideoDetectionStatusNotDetected); err != nil {
-		return nil, err
-	}
+	log.Printf("[detection] detection not yet implemented")
 
 	return &models.ConcertDetectResult{Detected: false, Matches: []models.ConcertMatch{}}, nil
 }

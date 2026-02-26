@@ -87,8 +87,8 @@ func main() {
 
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
-	concertHandler := handlers.NewConcertHandler(concertService, actService, songPerformanceService, videoService)
-	videoHandler := handlers.NewVideoHandler(videoService, detectionService)
+	concertHandler := handlers.NewConcertHandler(concertService, actService, songPerformanceService, videoService, detectionService)
+	videoHandler := handlers.NewVideoHandler(videoService)
 	artistHandler := handlers.NewArtistHandler(artistService)
 	songHandler := handlers.NewSongHandler(songService)
 
@@ -146,7 +146,6 @@ func main() {
 			{
 				videosResolved.POST("/upload/init", videoHandler.UploadInit)
 				videosResolved.POST("/:id/upload/confirm", videoHandler.UploadConfirm)
-				videosResolved.POST("/:id/concert/detect", videoHandler.DetectConcert)
 				videosResolved.DELETE("/:id", videoHandler.Delete)
 			}
 		}
@@ -171,6 +170,12 @@ func main() {
 			concerts.GET("/:id/videos", concertHandler.ListVideos)
 			concerts.GET("/:id/acts", concertHandler.ListActs)
 			concerts.GET("/:id/song-performances", concertHandler.ListSongPerformances)
+
+			concertsResolved := concerts.Group("")
+			concertsResolved.Use(authMiddleware, middleware.ResolveUser(store))
+			{
+				concertsResolved.POST("/detect", concertHandler.Detect)
+			}
 		}
 	}
 
