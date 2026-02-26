@@ -2,19 +2,20 @@ package database
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/jackc/pgx/v5"
 )
 
 const songPerformanceCols = `
-	sp.id,
-	sp.act_id,
-	sp.song_id,
-	sp.position,
-	sp.started_at,
-	sp.created_at,
-	sp.deleted_at
+	id,
+	act_id,
+	song_id,
+	position,
+	started_at,
+	created_at,
+	deleted_at
 `
 
 func scanSongPerformance(row pgx.Row) (*models.SongPerformance, error) {
@@ -50,8 +51,13 @@ func scanSongPerformances(rows pgx.Rows, allowPartial bool) ([]models.SongPerfor
 }
 
 func (s *Store) ListSongPerformancesByConcert(ctx context.Context, concertID int) ([]models.SongPerformance, error) {
-	const q = `
-	SELECT ` + songPerformanceCols + `
+	qualifiedCols, err := qualifyColumns("sp", songPerformanceCols)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build song performance columns: %w", err)
+	}
+
+	q := `
+	SELECT ` + qualifiedCols + `
 	FROM song_performances sp
 	INNER JOIN acts a ON a.id = sp.act_id
 	WHERE a.concert_id = $1
