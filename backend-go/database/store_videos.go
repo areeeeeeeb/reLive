@@ -175,10 +175,9 @@ func (s *Store) SetThumbnailURL(ctx context.Context, videoID int, url string) er
 	return err
 }
 
-// CompleteUploadAndQueueThumbnail atomically marks the upload as completed and queues it for thumbnail extraction.
-// Using a single statement eliminates the partial-failure window where status = 'completed'
-// but thumbnail_status stays NULL, which would leave the video permanently unprocessable.
-func (s *Store) CompleteUploadAndQueueThumbnail(ctx context.Context, videoID int) error {
+// SetUploadStatusCompleted atomically sets status = 'completed' and thumbnail_status = 'queued' (for recovery)
+// Note: this only updates DB state — actual extraction is dispatched separately via ThumbnailService.ExtractAsync.
+func (s *Store) SetUploadStatusCompleted(ctx context.Context, videoID int) error {
 	const q = `
 	UPDATE videos
 	SET status = $1, thumbnail_status = $2, updated_at = NOW()

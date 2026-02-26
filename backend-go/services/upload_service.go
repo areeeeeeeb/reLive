@@ -135,7 +135,6 @@ func (s *UploadService) CompleteMultipartUpload(ctx context.Context, key string,
 }
 
 // PresignGet returns a presigned GET URL for the given S3 key, valid for ttl duration.
-// ffprobe and ffmpeg can stream directly from this URL without downloading the file.
 func (s *UploadService) PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error) {
 	presigned, err := s.presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),

@@ -102,11 +102,10 @@ func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID in
 		return fmt.Errorf("failed to complete S3 upload: %w", err)
 	}
 
-	if err := s.store.CompleteUploadAndQueueThumbnail(ctx, videoID); err != nil {
-		return fmt.Errorf("failed to complete and queue video: %w", err)
+	if err := s.store.SetUploadStatusCompleted(ctx, videoID); err != nil {
+		return fmt.Errorf("failed to set upload status completed: %w", err)
 	}
-
-	// thumbnail may be nil in test environments where ffmpeg is unavailable.
+	// Fire Goroutine for thumbnail pipeline while upload pipeline continues
 	if s.thumbnail != nil {
 		s.thumbnail.ExtractAsync(video)
 	}

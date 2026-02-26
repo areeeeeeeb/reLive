@@ -10,7 +10,7 @@ import (
 
 // DetectionService runs concert detection for a video using client-provided metadata.
 // Detection is triggered explicitly by the client via POST /videos/:id/concert/detect
-// and runs synchronously in the HTTP handler — no worker pool involved.
+// and runs synchronously in the HTTP handler.
 type DetectionService struct {
 	store *database.Store
 }
