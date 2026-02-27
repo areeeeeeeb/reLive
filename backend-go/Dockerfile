@@ -17,8 +17,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o server ./main.go
 FROM alpine:3.19
 
 # Add OS-level runtime dependencies here as needed
-# e.g. RUN apk add --no-cache ffmpeg
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata ffmpeg
 
 WORKDIR /app
 
