@@ -76,7 +76,7 @@ export async function uploadVideo(
             contentType as VideoContentType,
             (partPercent) => {
                 if (onProgress) {
-                    partProgress[i] = partPercent;
+                    partProgress[i] = Math.max(partProgress[i], partPercent);
                     const overallPercent = Math.round(partProgress.reduce((a, b) => a + b, 0) / partCount);
                     onProgress(overallPercent);
                 }
@@ -145,7 +145,6 @@ export async function processUploads(queuedItems: QueuedMedia[]): Promise<void> 
         uploadStatus: 'failed',
         uploadError: errorMessage,
       });
-      throw error;
     }
   }
 }
