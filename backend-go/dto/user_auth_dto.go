@@ -1,4 +1,4 @@
-package models
+package dto
 
 // SyncUserRequest for syncing user from Auth0 on login
 type SyncUserRequest struct {
@@ -21,4 +21,3 @@ type UpdateProfileRequest struct {
 	ProfilePicture string `json:"profile_picture"`
 	Bio            string `json:"bio"`
 }
-

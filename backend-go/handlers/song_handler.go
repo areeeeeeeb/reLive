@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/dto"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
 )
@@ -45,22 +45,23 @@ func (h *SongHandler) Get(c *gin.Context) {
 // Search returns songs matching a query string.
 //
 //	GET /songs/search?q=creep&max_results=10&source=mixed
+//
 // default (main) behavior is to search both local and external sources
 // this can be overridden by setting the source query parameter
 func (h *SongHandler) Search(c *gin.Context) {
-	var req models.SearchRequest
+	var req dto.SearchRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if req.MaxResults <= 0 {
-		req.MaxResults = models.SearchMaxResultsDefault
+		req.MaxResults = dto.SearchMaxResultsDefault
 	}
-	if req.MaxResults > models.SearchMaxResultsMax {
-		req.MaxResults = models.SearchMaxResultsMax
+	if req.MaxResults > dto.SearchMaxResultsMax {
+		req.MaxResults = dto.SearchMaxResultsMax
 	}
 	if req.Source == "" {
-		req.Source = models.SearchDefaultSource
+		req.Source = dto.SearchDefaultSource
 	}
 
 	songs, err := h.songService.Search(c.Request.Context(), req.Q, req.MaxResults, req.Source)

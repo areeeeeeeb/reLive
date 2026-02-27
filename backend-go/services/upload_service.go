@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/dto"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -44,6 +44,7 @@ func CalculatePartCount(SizeBytes int64, partSize int64) int {
 	}
 	return int(count)
 }
+
 type UploadService struct {
 	s3Client      *s3.Client
 	presignClient *s3.PresignClient
@@ -84,10 +85,10 @@ func (s *UploadService) GeneratePresignedPartUrls(ctx context.Context, key strin
 	for i := range partCount {
 		partNumber := int32(i + 1)
 		presigned, err := s.presignClient.PresignUploadPart(ctx, &s3.UploadPartInput{
-			Bucket:   aws.String(s.bucket),
-			Key:      aws.String(key),
+			Bucket:     aws.String(s.bucket),
+			Key:        aws.String(key),
 			PartNumber: aws.Int32(partNumber),
-			UploadId: aws.String(uploadID),
+			UploadId:   aws.String(uploadID),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate presigned URL for part %d: %w", partNumber, err)
@@ -111,7 +112,7 @@ func (s *UploadService) AbortMultipartUpload(ctx context.Context, key string, up
 }
 
 // CompleteMultipartUpload finalizes a multipart upload
-func (s *UploadService) CompleteMultipartUpload(ctx context.Context, key string, uploadID string, parts []models.UploadPart) error {
+func (s *UploadService) CompleteMultipartUpload(ctx context.Context, key string, uploadID string, parts []dto.UploadPart) error {
 	// Convert to S3 CompletedPart format
 	completedParts := make([]s3Types.CompletedPart, len(parts))
 	for i, part := range parts {

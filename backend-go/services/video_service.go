@@ -7,6 +7,7 @@ import (
 
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
+	"github.com/areeeeeeeb/reLive/backend-go/dto"
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/google/uuid"
 )
@@ -35,9 +36,8 @@ func NewVideoService(store *database.Store, upload *UploadService) *VideoService
 	}
 }
 
-// InitUpload takes the full UploadInitRequest because all fields are needed together
-// and UploadInitRequest lives in models (not the handler layer), keeping the coupling acceptable.
-func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.UploadInitRequest) (*InitUploadResult, error) {
+// InitUpload takes the full UploadInitRequest because all fields are needed together.
+func (s *VideoService) InitUpload(ctx context.Context, userID int, req *dto.UploadInitRequest) (*InitUploadResult, error) {
 	if !strings.HasPrefix(req.ContentType, "video/") {
 		return nil, fmt.Errorf("invalid content type: %s, must be a video", req.ContentType)
 	}
@@ -79,7 +79,7 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.U
 
 // ConfirmUpload completes a multipart upload and marks the video as completed.
 // Thumbnail extraction is handled asynchronously by JobQueueService.
-func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID int, uploadID string, parts []models.UploadPart) error {
+func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID int, uploadID string, parts []dto.UploadPart) error {
 	video, err := s.store.GetVideoByID(ctx, videoID)
 	if err != nil {
 		return fmt.Errorf("video not found: %w", err)

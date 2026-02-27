@@ -3,7 +3,7 @@ package services
 import (
 	"fmt"
 
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/dto"
 )
 
 // SearchService is a shared toolkit for search operations.
@@ -19,12 +19,11 @@ func NewSearchService() *SearchService {
 
 // ValidateMaxResults checks that maxResults is within allowed bounds.
 func (s *SearchService) ValidateMaxResults(maxResults int) error {
-	if maxResults <= 0 || maxResults > models.SearchMaxResultsMax {
-		return fmt.Errorf("invalid max_results: %d (must be 1-%d)", maxResults, models.SearchMaxResultsMax)
+	if maxResults <= 0 || maxResults > dto.SearchMaxResultsMax {
+		return fmt.Errorf("invalid max_results: %d (must be 1-%d)", maxResults, dto.SearchMaxResultsMax)
 	}
 	return nil
 }
-
 
 // PAUSED DUE TO MUSICBRAINZ RATE LIMITING CONCERNS
 // FetchMBArtists(ctx, query) ([]MBArtistResult, error)
