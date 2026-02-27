@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/dto"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
 )
@@ -97,7 +97,7 @@ func (h *ConcertHandler) ListSongPerformances(c *gin.Context) {
 // POST /v2/api/concerts/detect
 // Stateless: returns top concert candidates for the given GPS coordinates and timestamp.
 func (h *ConcertHandler) Detect(c *gin.Context) {
-	var req models.ConcertDetectRequest
+	var req dto.ConcertDetectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return

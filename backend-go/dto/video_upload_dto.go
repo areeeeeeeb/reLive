@@ -1,4 +1,4 @@
-package models
+package dto
 
 import "time"
 
@@ -43,4 +43,3 @@ type UploadConfirmResponse struct {
 	VideoID int    `json:"videoId"`
 	Status  string `json:"status"`
 }
-

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
+	"github.com/areeeeeeeb/reLive/backend-go/dto"
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 )
 
@@ -27,11 +28,11 @@ func (s *ArtistService) Search(ctx context.Context, query string, maxResults int
 	}
 
 	switch source {
-	case models.SearchSourceLocal:
+	case dto.SearchSourceLocal:
 		return s.store.SearchArtists(ctx, query, maxResults)
-	case models.SearchSourceExternal:
+	case dto.SearchSourceExternal:
 		return nil, fmt.Errorf("external source not implemented for artists")
-	case models.SearchSourceMixed:
+	case dto.SearchSourceMixed:
 		return nil, fmt.Errorf("mixed source not implemented for artists")
 	default:
 		return nil, fmt.Errorf("invalid source: %s", source)
