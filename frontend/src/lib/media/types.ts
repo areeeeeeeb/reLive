@@ -40,4 +40,8 @@ export interface QueuedMedia {
   videoId?: number;
   // metadata
   metadata: MediaMetadata;
+  metadataExtracted: boolean; // whether we've attempted to extract metadata
+  // concert detection
+  processingStatus: ProcessingStatus;
+  concertMatches?: ConcertMatch[]; // detected concert matches (up to 3)
 }

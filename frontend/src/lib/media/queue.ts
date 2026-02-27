@@ -52,6 +52,7 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
 
     // basic metadata from asset
     let metadata: MediaMetadata = {};
+    let metadataExtracted = false;
 
     if (media.source === 'native') {
       metadata = {
@@ -63,6 +64,11 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
         longitude: media.asset.longitude,
         recordedAt: media.asset.creationDate ? new Date(media.asset.creationDate) : undefined,
       };
+
+      // if we have both location and date from native asset, no need to extract
+      const hasLocation = metadata.latitude != null && metadata.longitude != null;
+      const hasDate = metadata.recordedAt != null;
+      metadataExtracted = hasLocation && hasDate;
     }
 
     // create initial queued item
@@ -70,9 +76,11 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
       id,
       media,
       fileName,
-      status: 'pending' as const,
-      progress: 0,
+      uploadStatus: 'pending',
+      uploadProgress: 0,
       metadata,
+      metadataExtracted,
+      processingStatus: 'pending',
     };
 
     newItems.push(queuedItem);
@@ -93,18 +101,15 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
 async function extractMetadataAsync(items: QueuedMedia[]): Promise<void> {
   for (const queuedItem of items) {
     try {
-      // skip if we already have location and date from native asset
-      const hasLocation = queuedItem.metadata.latitude != null && queuedItem.metadata.longitude != null;
-      const hasDate = queuedItem.metadata.recordedAt != null;
-
-      if (hasLocation && hasDate) {
-        console.log(`Skipping MediaInfo for ${queuedItem.fileName} - already have metadata`);
-        continue;
-      }
+      // skip if we already extracted metadata
+      if (queuedItem.metadataExtracted) continue;
 
       // convert to file
       const file = await mediaItemToFile(queuedItem.media);
-      if (!file) continue;
+      if (!file) {
+        updateQueueItem(queuedItem.id, { metadataExtracted: true });
+        continue;
+      }
 
       // extract metadata using MediaInfo
       const extractedMetadata = await extractMediaMetadata(file);
@@ -119,11 +124,15 @@ async function extractMetadataAsync(items: QueuedMedia[]): Promise<void> {
             duration: extractedMetadata.duration || queuedItem.metadata.duration,
             width: extractedMetadata.width || queuedItem.metadata.width,
             height: extractedMetadata.height || queuedItem.metadata.height,
-          }
+          },
+          metadataExtracted: true,
         });
+      } else {
+        updateQueueItem(queuedItem.id, { metadataExtracted: true });
       }
     } catch (error) {
       console.error(`Failed to extract metadata for ${queuedItem.fileName}:`, error);
+      updateQueueItem(queuedItem.id, { metadataExtracted: true });
     }
   }
 }
@@ -174,7 +183,7 @@ export const hasQueuedItems = (): boolean => {
  */
 export const getCompletedVideoIds = (): number[] => {
   return uploadQueue
-    .filter(item => item.status === 'completed' && item.videoId != null)
+    .filter(item => item.uploadStatus === 'completed' && item.videoId != null)
     .map(item => item.videoId!);
 };
 

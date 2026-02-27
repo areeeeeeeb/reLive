@@ -108,15 +108,15 @@ export async function uploadVideo(
  * process queued items and upload them concurrently
  */
 export async function processUploads(queuedItems: QueuedMedia[]): Promise<void> {
-  // filter out already completed items
-  const itemsToUpload = queuedItems.filter(item => item.status !== 'completed');
+  // only upload items that are pending (uninitialized)
+  const itemsToUpload = queuedItems.filter(item => item.uploadStatus === 'pending');
   if (itemsToUpload.length === 0) return;
 
   // upload all files concurrently
   const uploadPromises = itemsToUpload.map(async (queuedItem) => {
     try {
       // mark as uploading
-      updateQueueItem(queuedItem.id, { status: 'uploading' });
+      updateQueueItem(queuedItem.id, { uploadStatus: 'uploading' });
       const file = await mediaItemToFile(queuedItem.media);
       if (!file) throw new Error('Failed to convert media to file');
       // upload with metadata
@@ -124,13 +124,13 @@ export async function processUploads(queuedItems: QueuedMedia[]): Promise<void> 
         file,
         queuedItem.metadata,
         (progress) => {
-          updateQueueItem(queuedItem.id, { progress });
+          updateQueueItem(queuedItem.id, { uploadProgress: progress });
         },
       );
       // mark as completed
       updateQueueItem(queuedItem.id, {
-        status: 'completed',
-        progress: 100,
+        uploadStatus: 'completed',
+        uploadProgress: 100,
         videoId: result.videoId,
       });
 
@@ -141,8 +141,8 @@ export async function processUploads(queuedItems: QueuedMedia[]): Promise<void> 
 
       // mark as failed
       updateQueueItem(queuedItem.id, {
-        status: 'failed',
-        error: errorMessage,
+        uploadStatus: 'failed',
+        uploadError: errorMessage,
       });
       throw error;
     }
