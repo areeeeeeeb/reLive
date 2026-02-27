@@ -17,12 +17,7 @@ import type { QueuedMedia } from './types';
 export async function extractItemMetadata(queuedItem: QueuedMedia): Promise<void> {
   try {
     // skip if we already extracted metadata
-    if (queuedItem.metadataExtracted) {
-      console.log(`[Metadata] Skipping ${queuedItem.fileName} - already extracted`);
-      return;
-    }
-
-    console.log(`[Metadata] Extracting metadata for ${queuedItem.fileName}`);
+    if (queuedItem.metadataExtracted) return;
 
     // convert to file
     const file = await mediaItemToFile(queuedItem.media);
@@ -37,13 +32,6 @@ export async function extractItemMetadata(queuedItem: QueuedMedia): Promise<void
 
     // update queue item with missing metadata only
     if (extractedMetadata) {
-      console.log(`[Metadata] Extracted metadata for ${queuedItem.fileName}:`, {
-        recordedAt: extractedMetadata.recordedAt,
-        latitude: extractedMetadata.latitude,
-        longitude: extractedMetadata.longitude,
-        duration: extractedMetadata.duration,
-        dimensions: `${extractedMetadata.width}x${extractedMetadata.height}`,
-      });
       updateQueueItem(queuedItem.id, {
         metadata: {
           recordedAt: queuedItem.metadata.recordedAt || extractedMetadata.recordedAt,
