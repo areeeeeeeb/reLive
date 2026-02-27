@@ -14,6 +14,14 @@ export interface UploadVideoInitRequest {
   filename: string;
   contentType: string;
   sizeBytes: number;
+
+  // client-extracted metadata (optional)
+  recordedAt?: string;  // ISO 8601 timestamp
+  latitude?: number;
+  longitude?: number;
+  duration?: number;    // seconds
+  width?: number;
+  height?: number;
 }
 
 export interface UploadVideoInitResponse {

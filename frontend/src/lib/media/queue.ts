@@ -1,30 +1,7 @@
-import type { MediaItem } from './selection';
-import { mediaItemToFile } from './selection';
-import { extractVideoMetadata } from './info';
 import { deleteVideo } from '../v2api/videos';
-
-
-// INTERFACE
-/**
- * queued media item with upload status tracking
- */
-export interface QueuedMedia {
-  id: string; // unique identifier
-  media: MediaItem;
-  fileName: string;
-  // upload tracking
-  status: 'pending' | 'uploading' | 'completed' | 'failed';
-  progress: number;
-  error?: string;
-  videoId?: number;
-  // metadata
-  duration?: number;
-  width?: number;
-  height?: number;
-  recordedAt?: Date;
-  latitude?: number;
-  longitude?: number;
-}
+import { processQueuedMedia } from './process';
+import type { MediaItem, MediaMetadata, QueuedMedia } from './types';
+export type { QueuedMedia } from './types';
 
 // QUEUE STATE
 // array-based queue holding individual media items
@@ -73,7 +50,8 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
       : media.handle.name;
 
     // basic metadata from asset
-    let metadata: Partial<QueuedMedia> = {};
+    let metadata: MediaMetadata = {};
+    let metadataExtracted = false;
 
     if (media.source === 'native') {
       metadata = {
@@ -85,6 +63,11 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
         longitude: media.asset.longitude,
         recordedAt: media.asset.creationDate ? new Date(media.asset.creationDate) : undefined,
       };
+
+      // if we have both location and date from native asset, no need to extract
+      const hasLocation = metadata.latitude != null && metadata.longitude != null;
+      const hasDate = metadata.recordedAt != null;
+      metadataExtracted = hasLocation && hasDate;
     }
 
     // create initial queued item
@@ -92,9 +75,11 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
       id,
       media,
       fileName,
-      status: 'pending' as const,
-      progress: 0,
-      ...metadata,
+      uploadStatus: 'pending',
+      uploadProgress: 0,
+      metadata,
+      metadataExtracted,
+      detectingStatus: 'pending',
     };
 
     newItems.push(queuedItem);
@@ -104,49 +89,9 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
   uploadQueue.push(...newItems);
   notifyListeners();
 
-  // extract detailed metadata asynchronously (don't block queue)
-  extractMetadataAsync(newItems);
+  // extract metadata and detect concerts asynchronously
+  processQueuedMedia();
 };
-
-/**
- * extract metadata from queued items asynchronously
- * only runs if we're missing key metadata (location or date)
- */
-async function extractMetadataAsync(items: QueuedMedia[]): Promise<void> {
-  for (const queuedItem of items) {
-    try {
-      // skip if we already have location and date from native asset
-      const hasLocation = queuedItem.latitude != null && queuedItem.longitude != null;
-      const hasDate = queuedItem.recordedAt != null;
-
-      if (hasLocation && hasDate) {
-        console.log(`Skipping MediaInfo for ${queuedItem.fileName} - already have metadata`);
-        continue;
-      }
-
-      // convert to file
-      const file = await mediaItemToFile(queuedItem.media);
-      if (!file) continue;
-
-      // extract metadata using MediaInfo
-      const metadata = await extractVideoMetadata(file);
-
-      // update queue item with missing metadata only
-      if (metadata) {
-        updateQueueItem(queuedItem.id, {
-          recordedAt: queuedItem.recordedAt || metadata.recordedAt,
-          latitude: queuedItem.latitude || metadata.latitude,
-          longitude: queuedItem.longitude || metadata.longitude,
-          duration: metadata.duration || queuedItem.duration,
-          width: metadata.width || queuedItem.width,
-          height: metadata.height || queuedItem.height,
-        });
-      }
-    } catch (error) {
-      console.error(`Failed to extract metadata for ${queuedItem.fileName}:`, error);
-    }
-  }
-}
 
 /**
  * update a queued item's status
@@ -194,7 +139,7 @@ export const hasQueuedItems = (): boolean => {
  */
 export const getCompletedVideoIds = (): number[] => {
   return uploadQueue
-    .filter(item => item.status === 'completed' && item.videoId != null)
+    .filter(item => item.uploadStatus === 'completed' && item.videoId != null)
     .map(item => item.videoId!);
 };
 
