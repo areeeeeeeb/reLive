@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -41,10 +42,10 @@ type SpacesConfig struct {
 }
 
 type ConcurrencyConfig struct {
-	Concurrency    int
-	QueueSize      int
-	Interval       int // seconds
-	StuckThreshold int // minutes, videos processing longer than this are assumed stuck
+	Concurrency       int           // POOL_CONCURRENCY — number of worker goroutines
+	QueueSize         int           // POOL_QUEUE_SIZE — job channel buffer size
+	SchedulerInterval time.Duration // SCHEDULER_INTERVAL_SECS — how often scheduler polls DB
+	StuckThreshold    time.Duration // STUCK_THRESHOLD_MINS — how long before a processing job is considered stuck
 }
 
 func Load() *Config {
@@ -62,10 +63,10 @@ func Load() *Config {
 		},
 
 		Concurrency: ConcurrencyConfig{
-			Concurrency:    getEnvInt("POOL_CONCURRENCY", 20),
-			QueueSize:      getEnvInt("POOL_QUEUE_SIZE", 50),
-			Interval:       getEnvInt("POLL_INTERVAL_SECONDS", 10),
-			StuckThreshold: getEnvInt("STUCK_THRESHOLD_MINUTES", 30),
+			Concurrency:       getEnvInt("POOL_CONCURRENCY", 5),
+			QueueSize:         getEnvInt("POOL_QUEUE_SIZE", 50),
+			SchedulerInterval: time.Duration(getEnvInt("SCHEDULER_INTERVAL_SECS", 30)) * time.Second,
+			StuckThreshold:    time.Duration(getEnvInt("STUCK_THRESHOLD_MINS", 10)) * time.Minute,
 		},
 		
 		Auth0: Auth0Config{

@@ -13,6 +13,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	jwksCacheTTL   = 5 * time.Minute  // how long to cache the Auth0 JWKS public keys
+	clockSkewLimit = time.Minute      // allowed clock drift when validating exp/nbf/iat
+)
+
 func AuthRequired(auth0 config.Auth0Config) gin.HandlerFunc {
 	domain := auth0.Domain
 	audience := auth0.Audience
@@ -22,14 +27,14 @@ func AuthRequired(auth0 config.Auth0Config) gin.HandlerFunc {
 		log.Fatalf("failed to parse issuer url: %v", err)
 	}
 
-	provider := jwks.NewCachingProvider(issuerUrl, 5*time.Minute)
+	provider := jwks.NewCachingProvider(issuerUrl, jwksCacheTTL)
 
 	jwtValidator, err := validator.New(
 		provider.KeyFunc,   // function that selects the correct Auth0 public key (by JWT header `kid`) from the cached JWKS
 		validator.RS256,    // require RS256-signed tokens (Auth0 signs with private key; we verify with public key)
 		issuerUrl.String(), // expected `iss` (issuer) claim; must match Auth0 domain URL
 		[]string{audience}, // expected `aud` (audience) claim; must include your API identifier
-		validator.WithAllowedClockSkew(time.Minute), // allow small clock differences when checking exp/nbf/iat
+		validator.WithAllowedClockSkew(clockSkewLimit), // allow small clock differences when checking exp/nbf/iat
 	)
 	if err != nil {
 		log.Fatalf("Failed to set up the jwt validator: %v", err)

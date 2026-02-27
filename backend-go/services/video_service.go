@@ -8,7 +8,6 @@ import (
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
 	"github.com/areeeeeeeb/reLive/backend-go/models"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 )
 
@@ -18,8 +17,7 @@ const (
 
 type VideoService struct {
 	store         *database.Store
-	uploadService *UploadService // upload_service handles s3 interactions
-	cdnURL        string
+	uploadService *UploadService
 }
 
 // InitUploadResult is the domain result of initiating an upload
@@ -30,11 +28,10 @@ type InitUploadResult struct {
 	PartSize int64
 }
 
-func NewVideoService(store *database.Store, s3Client *s3.Client, bucket string, cdnURL string) *VideoService {
+func NewVideoService(store *database.Store, upload *UploadService) *VideoService {
 	return &VideoService{
 		store:         store,
-		uploadService: NewUploadService(s3Client, bucket),
-		cdnURL:        cdnURL,
+		uploadService: upload,
 	}
 }
 
@@ -51,8 +48,8 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.U
 	partSize := CalculatePartSize(req.SizeBytes)
 	partCount := CalculatePartCount(req.SizeBytes, partSize)
 
-	// generate unique S3 key
-	key := fmt.Sprintf("users/%d/videos/%s/%s", userID, uuid.New().String(), req.Filename)
+	// generate unique S3 key: videos/{userID}/{uuid}_{filename}
+	key := fmt.Sprintf("videos/%d/%s_%s", userID, uuid.New().String(), req.Filename)
 
 	uploadID, err := s.uploadService.CreateMultipartUpload(ctx, key, req.ContentType)
 	if err != nil {
@@ -65,7 +62,7 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.U
 		return nil, err
 	}
 
-	videoURL := fmt.Sprintf("%s/%s", s.cdnURL, key)
+	videoURL := s.uploadService.CDNURL(key)
 	video, err := s.store.CreateVideo(ctx, userID, req.Filename, key, videoURL, req.Duration, req.Latitude, req.Longitude, req.RecordedAt, req.Width, req.Height)
 	if err != nil {
 		s.uploadService.AbortMultipartUpload(ctx, key, uploadID)
@@ -80,38 +77,38 @@ func (s *VideoService) InitUpload(ctx context.Context, userID int, req *models.U
 	}, nil
 }
 
-// ConfirmUpload completes a multipart upload and updates video status
+// ConfirmUpload completes a multipart upload and marks the video as completed.
+// Thumbnail extraction is handled asynchronously by JobQueueService.
 func (s *VideoService) ConfirmUpload(ctx context.Context, videoID int, userID int, uploadID string, parts []models.UploadPart) error {
-	// Get video to verify ownership and get S3 key
 	video, err := s.store.GetVideoByID(ctx, videoID)
 	if err != nil {
 		return fmt.Errorf("video not found: %w", err)
 	}
 
-	// Verify user owns this video
 	if video.UserID != userID {
 		return fmt.Errorf("unauthorized: video does not belong to user")
 	}
 
-	// Verify video is in correct status
 	if video.Status != models.VideoStatusPendingUpload {
 		return fmt.Errorf("video is not in pending_upload status (current: %s)", video.Status)
 	}
 
-	// Complete multipart upload in S3
 	if err := s.uploadService.CompleteMultipartUpload(ctx, video.S3Key, uploadID, parts); err != nil {
-		// Cleanup: abort S3 upload and mark video as failed (best effort)
 		_ = s.uploadService.AbortMultipartUpload(ctx, video.S3Key, uploadID)
 		_, _ = s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusFailed)
 		return fmt.Errorf("failed to complete S3 upload: %w", err)
 	}
 
-	// Update video status to completed (upload done)
-	if _, err := s.store.UpdateVideoStatus(ctx, videoID, models.VideoStatusCompleted); err != nil {
-		return fmt.Errorf("failed to update video status: %w", err)
+	if err := s.store.SetUploadStatusCompleted(ctx, videoID); err != nil {
+		return fmt.Errorf("failed to set upload status completed: %w", err)
 	}
 
 	return nil
+}
+
+// GetByID retrieves a video by its ID.
+func (s *VideoService) GetByID(ctx context.Context, videoID int) (*models.Video, error) {
+	return s.store.GetVideoByID(ctx, videoID)
 }
 
 // SetConcert links a video to a concert

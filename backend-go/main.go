@@ -70,21 +70,27 @@ func main() {
 	concertService := services.NewConcertService(store)
 	actService := services.NewActService(store)
 	songPerformanceService := services.NewSongPerformanceService(store)
-	videoService := services.NewVideoService(store, s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
+	uploadService := services.NewUploadService(s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
 	searchService := services.NewSearchService()
 	artistService := services.NewArtistService(store, searchService)
 	songService := services.NewSongService(store, searchService)
+	detectionService := services.NewDetectionService(store)
+
+	mediaService, err := services.NewMediaService()
+	if err != nil {
+		log.Fatalf("Failed to initialize media service: %v", err)
+	}
+	thumbnailService := services.NewThumbnailService(store, mediaService, uploadService)
+	jobQueue := services.NewJobQueueService(store, thumbnailService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.SchedulerInterval, cfg.Concurrency.StuckThreshold)
+	jobQueue.Start(ctx)
+	videoService := services.NewVideoService(store, uploadService)
+
 	// add handler structs here
 	userHandler := handlers.NewUserHandler(userService)
-	concertHandler := handlers.NewConcertHandler(concertService, actService, songPerformanceService, videoService)
+	concertHandler := handlers.NewConcertHandler(concertService, actService, songPerformanceService, videoService, detectionService)
 	videoHandler := handlers.NewVideoHandler(videoService)
 	artistHandler := handlers.NewArtistHandler(artistService)
 	songHandler := handlers.NewSongHandler(songService)
-
-	// start job queue for video processing pipeline
-	processingService := services.NewProcessingService(store)
-	jobQueue := services.NewJobQueueService(store, processingService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.Interval, cfg.Concurrency.StuckThreshold)
-	jobQueue.Start(ctx)
 
 	// Basic health check endpoint
 	r.GET("/health", func(c *gin.Context) {
@@ -164,6 +170,12 @@ func main() {
 			concerts.GET("/:id/videos", concertHandler.ListVideos)
 			concerts.GET("/:id/acts", concertHandler.ListActs)
 			concerts.GET("/:id/song-performances", concertHandler.ListSongPerformances)
+
+			concertsResolved := concerts.Group("")
+			concertsResolved.Use(authMiddleware, middleware.ResolveUser(store))
+			{
+				concertsResolved.POST("/detect", concertHandler.Detect)
+			}
 		}
 	}
 

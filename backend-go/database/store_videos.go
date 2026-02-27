@@ -28,7 +28,8 @@ const videoCols = `
 	recorded_at,
 	width,
 	height,
-	processing_status,
+	thumbnail_status,
+	detection_status,
 	created_at,
 	updated_at,
 	processed_at,
@@ -56,7 +57,8 @@ func scanVideo(row pgx.Row) (*models.Video, error) {
 		&v.RecordedAt,
 		&v.Width,
 		&v.Height,
-		&v.ProcessingStatus,
+		&v.ThumbnailStatus,
+		&v.DetectionStatus,
 		&v.CreatedAt,
 		&v.UpdatedAt,
 		&v.ProcessedAt,
@@ -85,18 +87,13 @@ func scanVideos(rows pgx.Rows, allowPartial bool) ([]*models.Video, error) {
 }
 
 // CreateVideo inserts a new video record.
-// If any metadata field is non-nil, processing_status is set to queued (processing pipeline will pick it up).
+// thumbnail_status is intentionally not set here — ConfirmUpload sets it to queued
+// once the S3 upload is complete, ensuring the thumbnail worker never claims a mid-upload video.
 func (s *Store) CreateVideo(ctx context.Context, userID int, filename, s3Key, videoURL string, duration *float64, latitude, longitude *float64, recordedAt *time.Time, width, height *int) (*models.Video, error) {
 	const q = `
-	INSERT INTO videos (user_id, filename, s3_key, video_url, status, duration, latitude, longitude, recorded_at, width, height, processing_status)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	INSERT INTO videos (user_id, filename, s3_key, video_url, status, duration, latitude, longitude, recorded_at, width, height)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	RETURNING ` + videoCols
-
-	var processingStatus *string
-	if latitude != nil || longitude != nil || recordedAt != nil || duration != nil {
-		ps := models.VideoProcessingStatusQueued
-		processingStatus = &ps
-	}
 
 	row := s.pool.QueryRow(ctx, q,
 		userID,
@@ -110,7 +107,6 @@ func (s *Store) CreateVideo(ctx context.Context, userID int, filename, s3Key, vi
 		recordedAt,
 		width,
 		height,
-		processingStatus,
 	)
 	return scanVideo(row)
 }
@@ -170,14 +166,35 @@ func (s *Store) ListVideosByConcert(ctx context.Context, concertID int) ([]*mode
 	return scanVideos(rows, true)
 }
 
-// ClaimQueuedProcessing atomically claims up to `limit` queued videos for processing.
-// FOR UPDATE SKIP LOCKED prevents double-claiming across concurrent workers/instances.
-func (s *Store) ClaimQueuedProcessing(ctx context.Context, limit int) ([]*models.Video, error) {
+// SetThumbnailURL sets the thumbnail_url for a video.
+func (s *Store) SetThumbnailURL(ctx context.Context, videoID int, url string) error {
 	const q = `
-	UPDATE videos SET processing_status = $1, updated_at = NOW()
+	UPDATE videos SET thumbnail_url = $1, updated_at = NOW() WHERE id = $2`
+
+	_, err := s.pool.Exec(ctx, q, url, videoID)
+	return err
+}
+
+// SetUploadStatusCompleted atomically sets status = 'completed' and thumbnail_status = 'queued' (for recovery)
+// Note: this only updates DB state — actual extraction is dispatched separately via ThumbnailService.ExtractAsync.
+func (s *Store) SetUploadStatusCompleted(ctx context.Context, videoID int) error {
+	const q = `
+	UPDATE videos
+	SET status = $1, thumbnail_status = $2, updated_at = NOW()
+	WHERE id = $3`
+
+	_, err := s.pool.Exec(ctx, q, models.VideoStatusCompleted, models.VideoThumbnailStatusQueued, videoID)
+	return err
+}
+
+// ClaimQueuedThumbnails atomically claims up to `limit` queued videos for thumbnail extraction.
+// FOR UPDATE SKIP LOCKED prevents double-claiming across concurrent workers/instances.
+func (s *Store) ClaimQueuedThumbnails(ctx context.Context, limit int) ([]*models.Video, error) {
+	const q = `
+	UPDATE videos SET thumbnail_status = $1, updated_at = NOW()
 	WHERE id IN (
 		SELECT id FROM videos
-		WHERE processing_status = $2 AND deleted_at IS NULL
+		WHERE thumbnail_status = $2 AND deleted_at IS NULL
 		ORDER BY created_at, id
 		LIMIT $3
 		FOR UPDATE SKIP LOCKED
@@ -185,8 +202,8 @@ func (s *Store) ClaimQueuedProcessing(ctx context.Context, limit int) ([]*models
 	RETURNING ` + videoCols
 
 	rows, err := s.pool.Query(ctx, q,
-		models.VideoProcessingStatusProcessing,
-		models.VideoProcessingStatusQueued,
+		models.VideoThumbnailStatusProcessing,
+		models.VideoThumbnailStatusQueued,
 		limit,
 	)
 	if err != nil {
@@ -228,45 +245,43 @@ func (s *Store) UpdateVideoMetadata(ctx context.Context, videoID int, meta model
 	return err
 }
 
-// SetProcessingStatusCompleted marks processing_status as completed for a video.
-func (s *Store) SetProcessingStatusCompleted(ctx context.Context, videoID int) error {
+// SetThumbnailStatusCompleted marks thumbnail_status as completed and records processed_at for a video.
+func (s *Store) SetThumbnailStatusCompleted(ctx context.Context, videoID int) error {
 	const q = `
 	UPDATE videos
-	SET processing_status = $1, updated_at = NOW()
+	SET thumbnail_status = $1, processed_at = NOW(), updated_at = NOW()
 	WHERE id = $2`
 
-	_, err := s.pool.Exec(ctx, q, models.VideoProcessingStatusCompleted, videoID)
+	_, err := s.pool.Exec(ctx, q, models.VideoThumbnailStatusCompleted, videoID)
 	return err
 }
 
-// SetProcessingStatusFailed marks processing_status as failed for a video.
-func (s *Store) SetProcessingStatusFailed(ctx context.Context, videoID int) error {
+// SetThumbnailStatusFailed marks thumbnail_status as failed for a video.
+func (s *Store) SetThumbnailStatusFailed(ctx context.Context, videoID int) error {
 	const q = `
 	UPDATE videos
-	SET processing_status = $1, updated_at = NOW()
+	SET thumbnail_status = $1, updated_at = NOW()
 	WHERE id = $2`
 
-	_, err := s.pool.Exec(ctx, q, models.VideoProcessingStatusFailed, videoID)
+	_, err := s.pool.Exec(ctx, q, models.VideoThumbnailStatusFailed, videoID)
 	return err
 }
 
-// CompleteVideo marks a video upload as completed and sets processed_at to now.
-func (s *Store) CompleteVideo(ctx context.Context, videoID int) error {
+// ResetStuckThumbnailVideos resets videos stuck in thumbnail_status = processing back to queued.
+func (s *Store) ResetStuckThumbnailVideos(ctx context.Context, stuckAfter time.Duration) error {
 	const q = `
-	UPDATE videos
-	SET status = $1, processed_at = NOW(), updated_at = NOW()
-	WHERE id = $2`
-
-	_, err := s.pool.Exec(ctx, q, models.VideoStatusCompleted, videoID)
-	return err
-}
-
-// ResetStuckProcessingVideos resets videos stuck in processing_status = processing back to queued.
-func (s *Store) ResetStuckProcessingVideos(ctx context.Context, stuckAfter time.Duration) error {
-	const q = `
-	UPDATE videos SET processing_status = $1, updated_at = NOW()
-	WHERE processing_status = $2 AND deleted_at IS NULL AND updated_at < $3`
+	UPDATE videos SET thumbnail_status = $1, updated_at = NOW()
+	WHERE thumbnail_status = $2 AND deleted_at IS NULL AND updated_at < $3`
 	cutoff := time.Now().Add(-stuckAfter)
-	_, err := s.pool.Exec(ctx, q, models.VideoProcessingStatusQueued, models.VideoProcessingStatusProcessing, cutoff)
+	_, err := s.pool.Exec(ctx, q, models.VideoThumbnailStatusQueued, models.VideoThumbnailStatusProcessing, cutoff)
+	return err
+}
+
+// SetDetectionStatus records the result of a concert detection attempt on a video.
+func (s *Store) SetDetectionStatus(ctx context.Context, videoID int, status string) error {
+	const q = `
+	UPDATE videos SET detection_status = $1, updated_at = NOW() WHERE id = $2`
+
+	_, err := s.pool.Exec(ctx, q, status, videoID)
 	return err
 }
