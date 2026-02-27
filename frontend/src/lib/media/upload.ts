@@ -47,35 +47,39 @@ export async function uploadVideo(
     };
     const initRes = await uploadVideoInit(initReq);
 
-    // 2. upload each part to S3
-    const parts: UploadedPart[] = [];
+    // 2. upload parts concurrently
+    //  Cap at 15 to avoid overwhelming the browser connection pool and causing stalled connections to reset part progress.
+    const PART_CONCURRENCY = 15;
     const partCount = initRes.partUrls.length;
+    const partProgress = new Array(partCount).fill(0);
+    const parts: UploadedPart[] = new Array(partCount);
 
-    for (let i = 0; i < partCount; i++) {
+    const uploadPart = async (i: number) => {
         const start = i * initRes.partSize;
-        const end = Math.min(start + initRes.partSize, file.size);  // end is exclusive
+        const end = Math.min(start + initRes.partSize, file.size);
         const partBlob = file.slice(start, end);
 
         const { etag } = await putPresigned(
-        initRes.partUrls[i],
-        partBlob,
-        contentType as VideoContentType,
+            initRes.partUrls[i],
+            partBlob,
+            contentType as VideoContentType,
             (partPercent) => {
                 if (onProgress) {
-                    const overallPercent = Math.round(((i + partPercent / 100) / partCount) * 100);
+                    partProgress[i] = partPercent;
+                    const overallPercent = Math.round(partProgress.reduce((a, b) => a + b, 0) / partCount);
                     onProgress(overallPercent);
                 }
             }
         );
 
-        if (!etag) {
-            throw new Error(`Failed to upload part ${i + 1}`);
-        }
+        if (!etag) throw new Error(`Failed to upload part ${i + 1}`);
+        parts[i] = { partNumber: i + 1, etag };
+    };
 
-        parts.push({
-            partNumber: i + 1,  // S3 part numbers are 1-indexed
-            etag,
-        });
+    for (let i = 0; i < partCount; i += PART_CONCURRENCY) {
+        await Promise.all(
+            Array.from({ length: Math.min(PART_CONCURRENCY, partCount - i) }, (_, j) => uploadPart(i + j))
+        );
     }
 
     // 3. confirm upload. backend calls S3 CompleteMultipartUpload
@@ -97,41 +101,33 @@ export async function uploadVideo(
  * process queued items and upload them concurrently
  */
 export async function processUploads(queuedItems: QueuedMedia[]): Promise<void> {
-  // filter out already completed items
-  const itemsToUpload = queuedItems.filter(item => item.status !== 'completed');
+  // filter out already completed or in-progress items
+  const itemsToUpload = queuedItems.filter(item => item.status !== 'completed' && item.status !== 'uploading');
   if (itemsToUpload.length === 0) return;
 
-  // upload all files concurrently
-  const uploadPromises = itemsToUpload.map(async (queuedItem) => {
+  // upload files one at a time — uploading all concurrently multiplies connection count
+  // (N videos × PART_CONCURRENCY parts) which causes DO Spaces to throttle aggressively
+  for (const queuedItem of itemsToUpload) {
     try {
-      // mark as uploading
       updateQueueItem(queuedItem.id, { status: 'uploading' });
       const file = await mediaItemToFile(queuedItem.media);
       if (!file) throw new Error('Failed to convert media to file');
-      // upload
       const result = await uploadVideo(file, (progress) => {
         updateQueueItem(queuedItem.id, { progress });
       });
-      // mark as completed
       updateQueueItem(queuedItem.id, {
         status: 'completed',
         progress: 100,
         videoId: result.videoId,
       });
-
-      return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       console.error(`Upload failed for ${queuedItem.fileName}:`, error);
-
-      // mark as failed
       updateQueueItem(queuedItem.id, {
         status: 'failed',
         error: errorMessage,
       });
       throw error;
     }
-  });
-
-  await Promise.all(uploadPromises);
+  }
 }
