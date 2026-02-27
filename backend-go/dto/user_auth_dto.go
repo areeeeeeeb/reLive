@@ -15,9 +15,10 @@ type TestSyncRequest struct {
 	DisplayName string `json:"displayName"`
 }
 
-// UpdateProfileRequest for updating user profile
+// UpdateProfileRequest for updating user profile in-app.
+// ProfilePicture and Bio are pointers — JSON null explicitly clears the field.
 type UpdateProfileRequest struct {
-	DisplayName    string `json:"display_name" binding:"required"`
-	ProfilePicture string `json:"profile_picture"`
-	Bio            string `json:"bio"`
+	DisplayName    string  `json:"displayName" binding:"required"`
+	ProfilePicture *string `json:"profilePicture"`
+	Bio            *string `json:"bio"`
 }
