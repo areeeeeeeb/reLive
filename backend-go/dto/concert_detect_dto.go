@@ -1,6 +1,10 @@
-package models
+package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/areeeeeeeb/reLive/backend-go/models"
+)
 
 // ConcertDetectRequest holds client-provided metadata used to match against concerts.
 // All fields are optional — results degrade gracefully if some are absent.
@@ -12,8 +16,8 @@ type ConcertDetectRequest struct {
 
 // ConcertMatch pairs a concert candidate with its detection confidence score.
 type ConcertMatch struct {
-	Concert Concert `json:"concert"`
-	Score   float64 `json:"score"`
+	Concert models.Concert `json:"concert"`
+	Score   float64        `json:"score"`
 }
 
 // ConcertDetectResult is returned from POST /concerts/detect.

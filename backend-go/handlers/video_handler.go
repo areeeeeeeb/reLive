@@ -4,6 +4,7 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/areeeeeeeb/reLive/backend-go/dto"
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
@@ -29,7 +30,7 @@ func (h *VideoHandler) Get(c *gin.Context) {
 
 // POST /videos/upload/init
 func (h *VideoHandler) UploadInit(c *gin.Context) {
-	var req models.UploadInitRequest
+	var req dto.UploadInitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -52,7 +53,7 @@ func (h *VideoHandler) UploadInit(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, models.UploadInitResponse{
+	c.JSON(200, dto.UploadInitResponse{
 		VideoID:  result.VideoID,
 		UploadID: result.UploadID,
 		PartURLs: result.PartURLs,
@@ -62,7 +63,7 @@ func (h *VideoHandler) UploadInit(c *gin.Context) {
 
 // POST /videos/:id/upload/confirm
 func (h *VideoHandler) UploadConfirm(c *gin.Context) {
-	var req models.UploadConfirmRequest
+	var req dto.UploadConfirmRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -85,7 +86,7 @@ func (h *VideoHandler) UploadConfirm(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, models.UploadConfirmResponse{
+	c.JSON(200, dto.UploadConfirmResponse{
 		VideoID: videoID,
 		Status:  models.VideoStatusCompleted,
 	})
