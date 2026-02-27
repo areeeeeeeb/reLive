@@ -170,12 +170,6 @@ func main() {
 			concerts.GET("/:id/videos", concertHandler.ListVideos)
 			concerts.GET("/:id/acts", concertHandler.ListActs)
 			concerts.GET("/:id/song-performances", concertHandler.ListSongPerformances)
-
-			concertsResolved := concerts.Group("")
-			concertsResolved.Use(authMiddleware, middleware.ResolveUser(store))
-			{
-				concertsResolved.POST("/detect", concertHandler.Detect)
-			}
 		}
 	}
 
