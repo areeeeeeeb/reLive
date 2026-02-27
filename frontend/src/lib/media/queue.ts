@@ -1,6 +1,5 @@
-import { mediaItemToFile } from './selection';
-import { extractMediaMetadata } from './info';
 import { deleteVideo } from '../v2api/videos';
+import { processQueuedMedia } from './process';
 import type { MediaItem, MediaMetadata, QueuedMedia } from './types';
 export type { QueuedMedia } from './types';
 
@@ -80,7 +79,7 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
       uploadProgress: 0,
       metadata,
       metadataExtracted,
-      processingStatus: 'pending',
+      detectingStatus: 'pending',
     };
 
     newItems.push(queuedItem);
@@ -90,52 +89,9 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
   uploadQueue.push(...newItems);
   notifyListeners();
 
-  // extract detailed metadata asynchronously (don't block queue)
-  extractMetadataAsync(newItems);
+  // extract metadata and detect concerts asynchronously
+  processQueuedMedia();
 };
-
-/**
- * extract metadata from queued items asynchronously
- * only runs if we're missing key metadata (location or date)
- */
-async function extractMetadataAsync(items: QueuedMedia[]): Promise<void> {
-  for (const queuedItem of items) {
-    try {
-      // skip if we already extracted metadata
-      if (queuedItem.metadataExtracted) continue;
-
-      // convert to file
-      const file = await mediaItemToFile(queuedItem.media);
-      if (!file) {
-        updateQueueItem(queuedItem.id, { metadataExtracted: true });
-        continue;
-      }
-
-      // extract metadata using MediaInfo
-      const extractedMetadata = await extractMediaMetadata(file);
-
-      // update queue item with missing metadata only
-      if (extractedMetadata) {
-        updateQueueItem(queuedItem.id, {
-          metadata: {
-            recordedAt: queuedItem.metadata.recordedAt || extractedMetadata.recordedAt,
-            latitude: queuedItem.metadata.latitude || extractedMetadata.latitude,
-            longitude: queuedItem.metadata.longitude || extractedMetadata.longitude,
-            duration: extractedMetadata.duration || queuedItem.metadata.duration,
-            width: extractedMetadata.width || queuedItem.metadata.width,
-            height: extractedMetadata.height || queuedItem.metadata.height,
-          },
-          metadataExtracted: true,
-        });
-      } else {
-        updateQueueItem(queuedItem.id, { metadataExtracted: true });
-      }
-    } catch (error) {
-      console.error(`Failed to extract metadata for ${queuedItem.fileName}:`, error);
-      updateQueueItem(queuedItem.id, { metadataExtracted: true });
-    }
-  }
-}
 
 /**
  * update a queued item's status

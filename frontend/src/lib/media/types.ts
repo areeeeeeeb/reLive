@@ -3,6 +3,7 @@
 // =============================================================================
 
 import type { PhotoLibraryAsset } from '@capgo/capacitor-photo-library';
+import type { ConcertMatch } from '../v2api/concerts';
 
 /**
  * unified media selection result
@@ -27,21 +28,31 @@ export interface MediaMetadata {
 }
 
 /**
- * queued media item with upload status tracking
+ * status for uploading
+ */
+export type UploadStatus = 'pending' | 'uploading' | 'completed' | 'failed';
+
+/**
+ * status for concert detection
+ */
+export type DetectingStatus = 'pending' | 'completed' | 'failed';
+
+/**
+ * queued media item with upload and processing status tracking
  */
 export interface QueuedMedia {
   id: string; // unique identifier
   media: MediaItem;
   fileName: string;
   // upload tracking
-  status: 'pending' | 'uploading' | 'completed' | 'failed';
-  progress: number;
-  error?: string;
+  uploadStatus: UploadStatus;
+  uploadProgress: number; // 0-100
+  uploadError?: string;
   videoId?: number;
   // metadata
   metadata: MediaMetadata;
   metadataExtracted: boolean; // whether we've attempted to extract metadata
   // concert detection
-  processingStatus: ProcessingStatus;
+  detectingStatus: DetectingStatus;
   concertMatches?: ConcertMatch[]; // detected concert matches (up to 3)
 }

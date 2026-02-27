@@ -60,5 +60,8 @@ export const API_V2_ENDPOINTS = {
   // Users
   userSync: '/v2/api/users/sync',
   userMe: '/v2/api/users/me',
+
+  // Concerts
+  detectConcert: '/v2/api/concerts/detect',
 } as const;
 

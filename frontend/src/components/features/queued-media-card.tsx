@@ -77,6 +77,27 @@ export function QueuedMediaCard({ item }: QueuedMediaCardProps) {
             )}
           </div>
         )}
+
+        {/* Concert Detection Results */}
+        <div className="text-xs space-y-1">
+          <div className="text-gray-600">
+            Detection: <span className={
+              item.detectingStatus === 'completed' ? 'text-green-600' :
+              item.detectingStatus === 'failed' ? 'text-red-600' :
+              'text-yellow-600'
+            }>
+              {item.detectingStatus}
+            </span>
+          </div>
+          {item.concertMatches && item.concertMatches.length > 0 && (
+            <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+              <div className="font-medium mb-1">Concert Matches:</div>
+              <pre className="whitespace-pre-wrap wrap-break-word">
+                {JSON.stringify(item.concertMatches, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
