@@ -1,22 +1,12 @@
 import { PhotoLibrary } from '@capgo/capacitor-photo-library';
-import type {
-  PhotoLibraryAuthorizationState,
-  PhotoLibraryAsset,
-} from '@capgo/capacitor-photo-library';
+import type { PhotoLibraryAuthorizationState } from '@capgo/capacitor-photo-library';
 import { Capacitor } from '@capacitor/core';
 import {
   ALLOWED_VIDEO_FILE_EXTENSIONS,
   ALLOWED_IMAGE_FILE_EXTENSIONS,
 } from '../types';
-
-/**
- * unified media selection result
- * both web and native use lightweight references that can be converted to File objects when needed
- */
-export type MediaItem =
-  | { source: 'web'; handle: FileSystemFileHandle }
-  | { source: 'native'; asset: PhotoLibraryAsset };
-export type MediaSelection = MediaItem[];
+import type { MediaItem, MediaSelection } from './types';
+export type { MediaItem, MediaSelection } from './types';
 
 /**
  * request authorization to access the photo library (native only)

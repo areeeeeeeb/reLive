@@ -19,7 +19,7 @@ async function getMediaInfo(): Promise<MediaInfo> {
 /**
  * extracted metadata from video file
  */
-export interface VideoMetadata {
+export interface MediaMetadata {
   recordedAt?: Date;
   latitude?: number;
   longitude?: number;
@@ -32,7 +32,7 @@ export interface VideoMetadata {
 /**
  * extract metadata from a video file using MediaInfo
  */
-export async function extractVideoMetadata(file: File): Promise<VideoMetadata> {
+export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
   try {
     const mediainfo = await getMediaInfo();
 
@@ -52,7 +52,7 @@ export async function extractVideoMetadata(file: File): Promise<VideoMetadata> {
 
     const result = await mediainfo.analyzeData(getSize, readChunk) as MediaInfoResult;
 
-    const metadata: VideoMetadata = {};
+    const metadata: MediaMetadata = {};
 
     // extract from general track (track 0)
     if (result?.media?.track?.[0]) {
