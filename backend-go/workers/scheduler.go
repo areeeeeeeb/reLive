@@ -45,7 +45,6 @@ func (s *Scheduler) Run(ctx context.Context) {
 			return
 		case <- ticker.C:
 			s.poll(ctx)
-			log.Printf("[scheduler:%s] poll complete", s.name)
 		}
 	}
 	
@@ -71,5 +70,7 @@ func (s *Scheduler) poll(ctx context.Context) {
 			return
 		}
 	}
-	log.Printf("[scheduler:%s] submitted %d jobs", s.name, len(jobs))
+	if len(jobs) != 0 {
+		log.Printf("[scheduler:%s] submitted %d jobs", s.name, len(jobs))
+	}
 }
