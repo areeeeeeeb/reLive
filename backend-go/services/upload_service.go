@@ -13,21 +13,22 @@ import (
 )
 
 const (
-	MinPartSize = 5 * 1024 * 1024  // 5MB minimum for S3
-	MaxParts    = 10000            // S3 limit
+	MinPartSize     = 5 * 1024 * 1024  // 5MB — S3 minimum per part
+	DefaultPartSize = 10 * 1024 * 1024 // 10MB — small parts maximize DO Spaces parallelism
+	MaxParts        = 10000            // S3 limit
 )
 
 // CalculatePartSize returns optimal part size based on file size
 // Falls back to MinPartSize if calculation has issues
 func CalculatePartSize(SizeBytes int64) int64 {
 	if SizeBytes <= 0 {
-		return MinPartSize
+		return DefaultPartSize
 	}
-	// If file fits within max parts using minimum size, use minimum
-	if SizeBytes/MinPartSize <= MaxParts {
-		return MinPartSize
+	// Use the default part size unless the file is so large it would exceed MaxParts
+	if SizeBytes/DefaultPartSize <= MaxParts {
+		return DefaultPartSize
 	}
-	// Otherwise, calculate larger part size to stay under max parts
+	// Scale up to stay under MaxParts (handles files > ~488GB)
 	partSize := (SizeBytes / MaxParts) + 1
 	return partSize
 }
