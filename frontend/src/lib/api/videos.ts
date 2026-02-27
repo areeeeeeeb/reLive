@@ -1,7 +1,7 @@
 import apiClient from './client';
 import { API_ENDPOINTS } from './config';
 
-export interface VideoMetadata {
+export interface MediaMetadata {
   title: string;
   description?: string;
   recorded_at?: string;
@@ -73,7 +73,7 @@ export interface UploadVideoResponse {
  */
 export const uploadVideo = async (
   videoFile: File | Blob,
-  metadata: VideoMetadata,
+  metadata: MediaMetadata,
   userId: number = 1,
   onProgress?: (progress: number) => void
 ): Promise<UploadVideoResponse> => {

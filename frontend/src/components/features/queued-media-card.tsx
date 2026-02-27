@@ -9,11 +9,11 @@ interface QueuedMediaCardProps {
 
 export function QueuedMediaCard({ item }: QueuedMediaCardProps) {
   const getStatusIcon = () => {
-    switch (item.status) {
+    switch (item.uploadStatus) {
       case 'pending':
         return <ClockIcon className="w-5 h-5 text-gray-400" weight="fill" />;
       case 'uploading':
-        return <span className="text-sm text-gray-600">{item.progress}%</span>;
+        return <span className="text-sm text-gray-600">{item.uploadProgress}%</span>;
       case 'completed':
         return <CheckCircleIcon className="w-5 h-5 text-green-600" weight="fill" />;
       case 'failed':
@@ -33,7 +33,7 @@ export function QueuedMediaCard({ item }: QueuedMediaCardProps) {
     return new Date(date).toLocaleDateString();
   };
 
-  const hasMetadata = item.duration || item.width || item.height || item.recordedAt || item.latitude || item.longitude;
+  const hasMetadata = item.metadata.duration || item.metadata.width || item.metadata.height || item.metadata.recordedAt || item.metadata.latitude || item.metadata.longitude;
 
   return (
     <Card className="py-4">
@@ -45,35 +45,35 @@ export function QueuedMediaCard({ item }: QueuedMediaCardProps) {
           </div>
         </div>
 
-        {item.status === 'uploading' && (
-          <Progress value={item.progress} />
+        {item.uploadStatus === 'uploading' && (
+          <Progress value={item.uploadProgress} />
         )}
 
-        {item.status === 'completed' && item.videoId && (
+        {item.uploadStatus === 'completed' && item.videoId && (
           <div className="text-sm text-green-600">
             Video ID: {item.videoId}
           </div>
         )}
 
-        {item.status === 'failed' && item.error && (
+        {item.uploadStatus === 'failed' && item.uploadError && (
           <div className="text-sm text-red-600">
-            Error: {item.error}
+            Error: {item.uploadError}
           </div>
         )}
 
         {hasMetadata && (
           <div className="text-xs text-gray-500 space-y-1">
-            {(item.width && item.height) && (
-              <div>{item.width} × {item.height}</div>
+            {(item.metadata.width && item.metadata.height) && (
+              <div>{item.metadata.width} × {item.metadata.height}</div>
             )}
-            {item.duration && (
-              <div>Duration: {formatDuration(item.duration)}</div>
+            {item.metadata.duration && (
+              <div>Duration: {formatDuration(item.metadata.duration)}</div>
             )}
-            {item.recordedAt && (
-              <div>Recorded: {formatDate(item.recordedAt)}</div>
+            {item.metadata.recordedAt && (
+              <div>Recorded: {formatDate(item.metadata.recordedAt)}</div>
             )}
-            {(item.latitude && item.longitude) && (
-              <div>Location: {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}</div>
+            {(item.metadata.latitude && item.metadata.longitude) && (
+              <div>Location: {item.metadata.latitude.toFixed(4)}, {item.metadata.longitude.toFixed(4)}</div>
             )}
           </div>
         )}

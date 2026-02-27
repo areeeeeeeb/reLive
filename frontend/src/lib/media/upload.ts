@@ -10,12 +10,15 @@ import type { UploadVideoInitRequest, UploadedPart } from '../v2api/videos';
 import { putPresigned } from '../s3/upload';
 import { isVideoType, getMimeTypeFromExtension } from '../types';
 import type { VideoContentType } from '../types';
-import { updateQueueItem, type QueuedMedia } from './queue';
+import { updateQueueItem } from './queue';
 import { mediaItemToFile } from './selection';
+import type { MediaMetadata, QueuedMedia } from './types';
 
 // =============================================================================
 // Types
 // =============================================================================
+
+export type { MediaMetadata, QueuedMedia } from './types';
 
 export interface UploadVideoResult {
   videoId: number;
@@ -27,6 +30,7 @@ export interface UploadVideoResult {
 
 export async function uploadVideo(
   file: File,
+  metadata?: MediaMetadata,
   onProgress?: (percent: number) => void
 ): Promise<UploadVideoResult> {
     // determine content type (use file.type or infer from extension)
@@ -44,6 +48,13 @@ export async function uploadVideo(
         filename: file.name,
         contentType: contentType,
         sizeBytes: file.size,
+        // include metadata if provided
+        ...(metadata?.recordedAt && { recordedAt: metadata.recordedAt.toISOString() }),
+        ...(metadata?.latitude !== undefined && { latitude: metadata.latitude }),
+        ...(metadata?.longitude !== undefined && { longitude: metadata.longitude }),
+        ...(metadata?.duration !== undefined && { duration: metadata.duration }),
+        ...(metadata?.width !== undefined && { width: metadata.width }),
+        ...(metadata?.height !== undefined && { height: metadata.height }),
     };
     const initRes = await uploadVideoInit(initReq);
 
@@ -108,10 +119,14 @@ export async function processUploads(queuedItems: QueuedMedia[]): Promise<void> 
       updateQueueItem(queuedItem.id, { status: 'uploading' });
       const file = await mediaItemToFile(queuedItem.media);
       if (!file) throw new Error('Failed to convert media to file');
-      // upload
-      const result = await uploadVideo(file, (progress) => {
-        updateQueueItem(queuedItem.id, { progress });
-      });
+      // upload with metadata
+      const result = await uploadVideo(
+        file,
+        queuedItem.metadata,
+        (progress) => {
+          updateQueueItem(queuedItem.id, { progress });
+        },
+      );
       // mark as completed
       updateQueueItem(queuedItem.id, {
         status: 'completed',

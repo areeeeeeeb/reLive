@@ -1,30 +1,8 @@
-import type { MediaItem } from './selection';
 import { mediaItemToFile } from './selection';
-import { extractVideoMetadata } from './info';
+import { extractMediaMetadata } from './info';
 import { deleteVideo } from '../v2api/videos';
-
-
-// INTERFACE
-/**
- * queued media item with upload status tracking
- */
-export interface QueuedMedia {
-  id: string; // unique identifier
-  media: MediaItem;
-  fileName: string;
-  // upload tracking
-  status: 'pending' | 'uploading' | 'completed' | 'failed';
-  progress: number;
-  error?: string;
-  videoId?: number;
-  // metadata
-  duration?: number;
-  width?: number;
-  height?: number;
-  recordedAt?: Date;
-  latitude?: number;
-  longitude?: number;
-}
+import type { MediaItem, MediaMetadata, QueuedMedia } from './types';
+export type { QueuedMedia } from './types';
 
 // QUEUE STATE
 // array-based queue holding individual media items
@@ -73,7 +51,7 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
       : media.handle.name;
 
     // basic metadata from asset
-    let metadata: Partial<QueuedMedia> = {};
+    let metadata: MediaMetadata = {};
 
     if (media.source === 'native') {
       metadata = {
@@ -94,7 +72,7 @@ export const addToQueue = async (items: MediaItem[]): Promise<void> => {
       fileName,
       status: 'pending' as const,
       progress: 0,
-      ...metadata,
+      metadata,
     };
 
     newItems.push(queuedItem);
@@ -116,8 +94,8 @@ async function extractMetadataAsync(items: QueuedMedia[]): Promise<void> {
   for (const queuedItem of items) {
     try {
       // skip if we already have location and date from native asset
-      const hasLocation = queuedItem.latitude != null && queuedItem.longitude != null;
-      const hasDate = queuedItem.recordedAt != null;
+      const hasLocation = queuedItem.metadata.latitude != null && queuedItem.metadata.longitude != null;
+      const hasDate = queuedItem.metadata.recordedAt != null;
 
       if (hasLocation && hasDate) {
         console.log(`Skipping MediaInfo for ${queuedItem.fileName} - already have metadata`);
@@ -129,17 +107,19 @@ async function extractMetadataAsync(items: QueuedMedia[]): Promise<void> {
       if (!file) continue;
 
       // extract metadata using MediaInfo
-      const metadata = await extractVideoMetadata(file);
+      const extractedMetadata = await extractMediaMetadata(file);
 
       // update queue item with missing metadata only
-      if (metadata) {
+      if (extractedMetadata) {
         updateQueueItem(queuedItem.id, {
-          recordedAt: queuedItem.recordedAt || metadata.recordedAt,
-          latitude: queuedItem.latitude || metadata.latitude,
-          longitude: queuedItem.longitude || metadata.longitude,
-          duration: metadata.duration || queuedItem.duration,
-          width: metadata.width || queuedItem.width,
-          height: metadata.height || queuedItem.height,
+          metadata: {
+            recordedAt: queuedItem.metadata.recordedAt || extractedMetadata.recordedAt,
+            latitude: queuedItem.metadata.latitude || extractedMetadata.latitude,
+            longitude: queuedItem.metadata.longitude || extractedMetadata.longitude,
+            duration: extractedMetadata.duration || queuedItem.metadata.duration,
+            width: extractedMetadata.width || queuedItem.metadata.width,
+            height: extractedMetadata.height || queuedItem.metadata.height,
+          }
         });
       }
     } catch (error) {
