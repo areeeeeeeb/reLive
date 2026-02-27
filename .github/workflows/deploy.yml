@@ -23,7 +23,7 @@ jobs:
     steps:
       # Check out the repo so the workflow has access to the source code
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Authenticate with GitHub Container Registry using the built-in GITHUB_TOKEN.
       # No PAT needed since the image namespace matches the repo owner (areeeeeeeb).
