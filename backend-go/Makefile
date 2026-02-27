@@ -2,9 +2,31 @@
 include .env
 export
 
-.PHONY: dev migrate-up migrate-down migrate-create migrate-status test
+.PHONY: dev migrate-up migrate-down migrate-create migrate-status test \
+        local-up local-down local-reset local-setup
 
-# Development server
+# ── Local infrastructure ──────────────────────────────────────────────────────
+
+# Start local PostgreSQL + MinIO (detached)
+local-up:
+	docker compose -f docker-compose.local.yml up -d
+
+# Stop local services (keeps volumes)
+local-down:
+	docker compose -f docker-compose.local.yml down
+
+# Wipe volumes and stop — full clean slate
+local-reset:
+	docker compose -f docker-compose.local.yml down -v
+
+# First-time setup: start services, wait for healthy, then migrate
+local-setup: local-up
+	@echo "Waiting for services to be healthy..."
+	@docker compose -f docker-compose.local.yml wait postgres minio minio-init 2>/dev/null || sleep 8
+	@$(MAKE) migrate-up
+
+# ── Development server ────────────────────────────────────────────────────────
+
 dev:
 	go run main.go
 
@@ -45,6 +67,14 @@ clean:
 # Help
 help:
 	@echo "Available commands:"
+	@echo ""
+	@echo "  Local infrastructure (Docker):"
+	@echo "  make local-setup      - First-time: start services + migrate"
+	@echo "  make local-up         - Start PostgreSQL + MinIO"
+	@echo "  make local-down       - Stop services (keep data)"
+	@echo "  make local-reset      - Stop services and wipe all data"
+	@echo ""
+	@echo "  Development:"
 	@echo "  make dev              - Run development server"
 	@echo "  make migrate-up       - Run pending migrations"
 	@echo "  make migrate-down     - Rollback last migration"
