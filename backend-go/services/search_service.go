@@ -6,12 +6,9 @@ import (
 	"github.com/areeeeeeeb/reLive/backend-go/dto"
 )
 
-// SearchService is a shared toolkit for search operations.
-// It holds the future MusicBrainz client and shared helpers.
+// SearchService is a shared toolkit for local search operations.
 // Domain services (ArtistService, SongService) own their own search orchestration.
-type SearchService struct {
-	// TODO: add MusicBrainz HTTP client here
-}
+type SearchService struct{}
 
 func NewSearchService() *SearchService {
 	return &SearchService{}
@@ -25,6 +22,20 @@ func (s *SearchService) ValidateMaxResults(maxResults int) error {
 	return nil
 }
 
-// PAUSED DUE TO MUSICBRAINZ RATE LIMITING CONCERNS
-// FetchMBArtists(ctx, query) ([]MBArtistResult, error)
-// FetchMBRecordings(ctx, query) ([]MBRecordingResult, error)
+// BuildSearchMeta returns shared response metadata defaults for search responses.
+func (s *SearchService) BuildSearchMeta(req dto.SearchRequest, resultsReturned int) dto.SearchResponseMeta {
+	requestedMaxResults := req.MaxResults
+	if requestedMaxResults <= 0 {
+		requestedMaxResults = dto.SearchMaxResultsDefault
+	}
+	if requestedMaxResults > dto.SearchMaxResultsMax {
+		requestedMaxResults = dto.SearchMaxResultsMax
+	}
+
+	return dto.SearchResponseMeta{
+		Query:               req.Q,
+		RequestedMaxResults: requestedMaxResults,
+		ResultsReturned:     resultsReturned,
+		HasMore:             false,
+	}
+}

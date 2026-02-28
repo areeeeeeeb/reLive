@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/areeeeeeeb/reLive/backend-go/dto"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
@@ -59,4 +61,29 @@ func (h *UserHandler) Me(c *gin.Context) {
 
 	// _ = h.pool // TODO: use for DB queries
 	c.JSON(200, gin.H{"ok": true})
+}
+
+// Search returns users matching a query string.
+//
+//	GET /users/search?q=dkang&max_results=10
+func (h *UserHandler) Search(c *gin.Context) {
+	var req dto.SearchRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.MaxResults <= 0 {
+		req.MaxResults = dto.SearchMaxResultsDefault
+	}
+	if req.MaxResults > dto.SearchMaxResultsMax {
+		req.MaxResults = dto.SearchMaxResultsMax
+	}
+
+	response, err := h.userService.Search(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user search failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
 }

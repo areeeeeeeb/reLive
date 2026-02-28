@@ -64,14 +64,14 @@ func main() {
 
 	// store for DB operations
 	store := database.NewStore(pool, cfg.Store.SearchTrgmSimilarityThreshold)
+	searchService := services.NewSearchService()
 
 	// add service structs here
-	userService := services.NewUserService(store)
-	concertService := services.NewConcertService(store)
+	userService := services.NewUserService(store, searchService)
 	actService := services.NewActService(store)
 	songPerformanceService := services.NewSongPerformanceService(store)
 	uploadService := services.NewUploadService(s3Client, cfg.Spaces.Bucket, cfg.Spaces.CdnURL)
-	searchService := services.NewSearchService()
+	concertService := services.NewConcertService(store, searchService)
 	artistService := services.NewArtistService(store, searchService)
 	songService := services.NewSongService(store, searchService)
 	detectionService := services.NewDetectionService(store)
@@ -122,6 +122,8 @@ func main() {
 		// users routes
 		users := v2.Group("/users")
 		{
+			users.GET("/search", userHandler.Search)
+
 			usersAuth := users.Group("")
 			usersAuth.Use(authMiddleware)
 			{
@@ -166,6 +168,7 @@ func main() {
 
 		concerts := v2.Group("/concerts")
 		{
+			concerts.GET("/search", concertHandler.Search)
 			concerts.GET("/:id", concertHandler.Get)
 			concerts.GET("/:id/videos", concertHandler.ListVideos)
 			concerts.GET("/:id/acts", concertHandler.ListActs)
