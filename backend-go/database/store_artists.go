@@ -102,7 +102,8 @@ func (s *Store) SearchArtists(ctx context.Context, query string, maxResults int)
 	  (name ILIKE $1 || '%') DESC,
 	  similarity(name, $1) DESC,
 	  is_verified DESC,
-	  name ASC
+	  name ASC,
+	  id ASC
 	LIMIT $3`
 
 	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults, s.searchTrgmSimilarityThreshold)

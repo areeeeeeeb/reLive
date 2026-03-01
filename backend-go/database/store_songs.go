@@ -85,7 +85,8 @@ func (s *Store) SearchSongs(ctx context.Context, query string, maxResults int) (
 	  (title ILIKE $1 || '%') DESC,
 	  similarity(title, $1) DESC,
 	  is_verified DESC,
-	  title ASC
+	  title ASC,
+	  id ASC
 	LIMIT $3`
 
 	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults, s.searchTrgmSimilarityThreshold)

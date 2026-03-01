@@ -142,7 +142,8 @@ func (s *Store) SearchUsers(ctx context.Context, query string, maxResults int) (
 	  (username ILIKE $1 || '%') DESC,
 	  (display_name ILIKE $1 || '%') DESC,
 	  GREATEST(similarity(username, $1), similarity(display_name, $1)) DESC,
-	  username ASC
+	  username ASC,
+	  id ASC
 	LIMIT $3`
 
 	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults, s.searchTrgmSimilarityThreshold)
