@@ -1,0 +1,1 @@
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS thumbnail_processing_started_at TIMESTAMPTZ DEFAULT NULL;

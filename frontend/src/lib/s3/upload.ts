@@ -16,7 +16,6 @@ export async function putPresigned(
       if (onProgress && e.total) {
         onProgress(Math.round((e.loaded / e.total) * 100));
       }
-    // we will be calling putPresigned() multiple times, maybe we don't need this callback
     },
   });
 

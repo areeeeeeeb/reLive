@@ -66,6 +66,18 @@ func (s *Store) GetUserByID(ctx context.Context, userID int) (*models.User, erro
 	return scanUser(s.pool.QueryRow(ctx, q, userID))
 }
 
+// UpdateUserProfile updates display_name, profile_picture, and bio for a user.
+// Unlike UpsertUser, this uses direct assignment — null values explicitly clear the field.
+func (s *Store) UpdateUserProfile(ctx context.Context, userID int, displayName string, profilePicture *string, bio *string) (*models.User, error) {
+	const q = `
+	UPDATE users
+	SET display_name = $1, profile_picture = $2, bio = $3, updated_at = NOW()
+	WHERE id = $4 AND deleted_at IS NULL
+	RETURNING ` + userCols
+
+	return scanUser(s.pool.QueryRow(ctx, q, displayName, profilePicture, bio, userID))
+}
+
 func (s *Store) GetUserByAuth0ID(ctx context.Context, auth0ID string) (*models.User, error) {
 	const q = `
 	SELECT ` + userCols + `
