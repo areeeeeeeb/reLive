@@ -28,8 +28,9 @@ type Video struct {
     Width        *int       `db:"width" json:"width"`
     Height       *int       `db:"height" json:"height"`
 
-	ThumbnailStatus *string    `db:"thumbnail_status" json:"thumbnail_status,omitempty"`
-	DetectionStatus *string    `db:"detection_status" json:"detection_status,omitempty"`
+	ThumbnailStatus             *string    `db:"thumbnail_status" json:"thumbnail_status,omitempty"`
+	ThumbnailProcessingStartedAt *time.Time `db:"thumbnail_processing_started_at" json:"-"`
+	DetectionStatus             *string    `db:"detection_status" json:"detection_status,omitempty"`
 
 	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`

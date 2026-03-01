@@ -2,10 +2,7 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"strings"
-	"time"
 
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
 	"github.com/areeeeeeeb/reLive/backend-go/models"
@@ -25,11 +22,10 @@ const concertCols = `
 
 func scanConcert(row pgx.Row) (*models.Concert, error) {
 	var c models.Concert
-	var name sql.NullString
 
 	if err := row.Scan(
 		&c.ID,
-		&name,
+		&c.Name,
 		&c.Date,
 		&c.VenueID,
 		&c.ArtistID,
@@ -43,19 +39,7 @@ func scanConcert(row pgx.Row) (*models.Concert, error) {
 		return nil, err
 	}
 
-	c.Name = resolveConcertName(name, c.Date)
 	return &c, nil
-}
-
-func resolveConcertName(name sql.NullString, date time.Time) string {
-	if name.Valid {
-		trimmed := strings.TrimSpace(name.String)
-		if trimmed != "" {
-			return trimmed
-		}
-	}
-
-	return "Concert on " + date.Format("2006-01-02")
 }
 
 func scanConcerts(rows pgx.Rows, allowPartial bool) ([]models.Concert, error) {
@@ -107,13 +91,14 @@ func (s *Store) SearchConcerts(ctx context.Context, query string, maxResults int
 	WHERE deleted_at IS NULL
 	  AND (
 	    name ILIKE $2
-	    OR similarity(COALESCE(name, ''), $1) >= $4
+	    OR similarity(name, $1) >= $4
 	  )
 	ORDER BY
-	  (lower(COALESCE(name, '')) = lower($1)) DESC,
-	  (COALESCE(name, '') ILIKE $1 || '%') DESC,
-	  similarity(COALESCE(name, ''), $1) DESC,
-	  date DESC
+	  (lower(name) = lower($1)) DESC,
+	  (name ILIKE $1 || '%') DESC,
+	  similarity(name, $1) DESC,
+	  date DESC,
+	  id ASC
 	LIMIT $3`
 
 	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults, s.searchTrgmSimilarityThreshold)

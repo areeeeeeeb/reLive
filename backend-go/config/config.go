@@ -46,6 +46,7 @@ type ConcurrencyConfig struct {
 	QueueSize         int           // POOL_QUEUE_SIZE — job channel buffer size
 	SchedulerInterval time.Duration // SCHEDULER_INTERVAL_SECS — how often scheduler polls DB
 	StuckThreshold    time.Duration // STUCK_THRESHOLD_MINS — how long before a processing job is considered stuck
+	ResetInterval     time.Duration // RESET_INTERVAL_MINS — how often the stuck-job reset loop runs
 }
 
 func Load() *Config {
@@ -67,6 +68,7 @@ func Load() *Config {
 			QueueSize:         getEnvInt("POOL_QUEUE_SIZE", 50),
 			SchedulerInterval: time.Duration(getEnvInt("SCHEDULER_INTERVAL_SECS", 30)) * time.Second,
 			StuckThreshold:    time.Duration(getEnvInt("STUCK_THRESHOLD_MINS", 10)) * time.Minute,
+			ResetInterval:     time.Duration(getEnvInt("RESET_INTERVAL_MINS", 5)) * time.Minute,
 		},
 		
 		Auth0: Auth0Config{
