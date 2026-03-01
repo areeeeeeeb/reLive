@@ -22,6 +22,7 @@ const concertCols = `
 
 func scanConcert(row pgx.Row) (*models.Concert, error) {
 	var c models.Concert
+
 	if err := row.Scan(
 		&c.ID,
 		&c.Name,
@@ -37,7 +38,24 @@ func scanConcert(row pgx.Row) (*models.Concert, error) {
 		}
 		return nil, err
 	}
+
 	return &c, nil
+}
+
+func scanConcerts(rows pgx.Rows, allowPartial bool) ([]models.Concert, error) {
+	defer rows.Close()
+	concerts := make([]models.Concert, 0)
+	for rows.Next() {
+		c, err := scanConcert(rows)
+		if err != nil {
+			if allowPartial {
+				continue
+			}
+			return concerts, err
+		}
+		concerts = append(concerts, *c)
+	}
+	return concerts, rows.Err()
 }
 
 func (s *Store) GetConcertByID(ctx context.Context, concertID int) (*models.Concert, error) {
@@ -62,4 +80,31 @@ func (s *Store) ConcertExists(ctx context.Context, concertID int) (bool, error) 
 		return false, err
 	}
 	return exists, nil
+}
+
+func (s *Store) SearchConcerts(ctx context.Context, query string, maxResults int) ([]models.Concert, error) {
+	query, likeQuery := prepareSearchQuery(query)
+
+	const q = `
+	SELECT ` + concertCols + `
+	FROM concerts
+	WHERE deleted_at IS NULL
+	  AND (
+	    name ILIKE $2
+	    OR similarity(name, $1) >= $4
+	  )
+	ORDER BY
+	  (lower(name) = lower($1)) DESC,
+	  (name ILIKE $1 || '%') DESC,
+	  similarity(name, $1) DESC,
+	  date DESC,
+	  id ASC
+	LIMIT $3`
+
+	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults, s.searchTrgmSimilarityThreshold)
+	if err != nil {
+		return nil, err
+	}
+
+	return scanConcerts(rows, true)
 }

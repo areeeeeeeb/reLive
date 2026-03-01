@@ -44,10 +44,7 @@ func (h *SongHandler) Get(c *gin.Context) {
 
 // Search returns songs matching a query string.
 //
-//	GET /songs/search?q=creep&max_results=10&source=mixed
-//
-// default (main) behavior is to search both local and external sources
-// this can be overridden by setting the source query parameter
+//	GET /songs/search?q=creep&max_results=10
 func (h *SongHandler) Search(c *gin.Context) {
 	var req dto.SearchRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -60,15 +57,12 @@ func (h *SongHandler) Search(c *gin.Context) {
 	if req.MaxResults > dto.SearchMaxResultsMax {
 		req.MaxResults = dto.SearchMaxResultsMax
 	}
-	if req.Source == "" {
-		req.Source = dto.SearchDefaultSource
-	}
 
-	songs, err := h.songService.Search(c.Request.Context(), req.Q, req.MaxResults, req.Source)
+	response, err := h.songService.Search(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "song search failed"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"songs": songs})
+	c.JSON(http.StatusOK, response)
 }

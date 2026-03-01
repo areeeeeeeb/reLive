@@ -42,10 +42,7 @@ func (h *ArtistHandler) Get(c *gin.Context) {
 
 // Search returns artists matching a query string.
 //
-//	GET /artists/search?q=radiohead&max_results=10&source=mixed
-//
-// default (main) behavior is to search both local and external sources
-// this can be overridden by setting the source query parameter
+//	GET /artists/search?q=radiohead&max_results=10
 func (h *ArtistHandler) Search(c *gin.Context) {
 	var req dto.SearchRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -58,15 +55,12 @@ func (h *ArtistHandler) Search(c *gin.Context) {
 	if req.MaxResults > dto.SearchMaxResultsMax {
 		req.MaxResults = dto.SearchMaxResultsMax
 	}
-	if req.Source == "" {
-		req.Source = dto.SearchDefaultSource
-	}
 
-	artists, err := h.artistService.Search(c.Request.Context(), req.Q, req.MaxResults, req.Source)
+	response, err := h.artistService.Search(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "artist search failed"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"artists": artists})
+	c.JSON(http.StatusOK, response)
 }

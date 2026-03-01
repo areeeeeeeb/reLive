@@ -4,15 +4,17 @@ import (
 	"context"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
+	"github.com/areeeeeeeb/reLive/backend-go/dto"
 	"github.com/areeeeeeeb/reLive/backend-go/models"
 )
 
 type UserService struct {
-	store *database.Store
+	store         *database.Store
+	searchService *SearchService
 }
 
-func NewUserService(store *database.Store) *UserService {
-	return &UserService{store: store}
+func NewUserService(store *database.Store, searchService *SearchService) *UserService {
+	return &UserService{store: store, searchService: searchService}
 }
 
 // Sync handles Auth0 login/signup — updates on conflict because user info
@@ -41,4 +43,36 @@ func (s *UserService) GetByID(ctx context.Context, userID int) (*models.User, er
 // Null values for profilePicture and bio explicitly clear those fields.
 func (s *UserService) UpdateProfile(ctx context.Context, userID int, displayName string, profilePicture *string, bio *string) (*models.User, error) {
 	return s.store.UpdateUserProfile(ctx, userID, displayName, profilePicture, bio)
+}
+
+
+func (s *UserService) Search(ctx context.Context, req dto.SearchRequest) (*dto.UserSearchResponse, error) {
+	if err := s.searchService.ValidateMaxResults(req.MaxResults); err != nil {
+		return nil, err
+	}
+
+	users, err := s.store.SearchUsers(ctx, req.Q, req.MaxResults)
+	if err != nil {
+		return nil, err
+	}
+
+	results := s.BuildSearchResults(users)
+	meta := s.searchService.BuildSearchMeta(req, len(results))
+	return &dto.UserSearchResponse{
+		Results: results,
+		Meta:    meta,
+	}, nil
+}
+
+func (s *UserService) BuildSearchResults(users []models.User) []dto.UserSearchItem {
+	results := make([]dto.UserSearchItem, 0, len(users))
+	for _, user := range users {
+		results = append(results, dto.UserSearchItem{
+			ID:                user.ID,
+			Username:          user.Username,
+			DisplayName:       user.DisplayName,
+			ProfilePictureURL: user.ProfilePictureURL,
+		})
+	}
+	return results
 }

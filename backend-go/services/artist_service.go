@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
 	"github.com/areeeeeeeb/reLive/backend-go/dto"
@@ -22,19 +21,35 @@ func (s *ArtistService) Get(ctx context.Context, id int) (*models.Artist, error)
 	return s.store.GetArtistByID(ctx, id)
 }
 
-func (s *ArtistService) Search(ctx context.Context, query string, maxResults int, source string) ([]models.Artist, error) {
-	if err := s.searchService.ValidateMaxResults(maxResults); err != nil {
+func (s *ArtistService) Search(ctx context.Context, req dto.SearchRequest) (*dto.ArtistSearchResponse, error) {
+	if err := s.searchService.ValidateMaxResults(req.MaxResults); err != nil {
 		return nil, err
 	}
 
-	switch source {
-	case dto.SearchSourceLocal:
-		return s.store.SearchArtists(ctx, query, maxResults)
-	case dto.SearchSourceExternal:
-		return nil, fmt.Errorf("external source not implemented for artists")
-	case dto.SearchSourceMixed:
-		return nil, fmt.Errorf("mixed source not implemented for artists")
-	default:
-		return nil, fmt.Errorf("invalid source: %s", source)
+	artists, err := s.store.SearchArtists(ctx, req.Q, req.MaxResults)
+	if err != nil {
+		return nil, err
 	}
+
+	results := s.BuildSearchResults(artists)
+	meta := s.searchService.BuildSearchMeta(req, len(results))
+	return &dto.ArtistSearchResponse{
+		Results: results,
+		Meta:    meta,
+	}, nil
+}
+
+// BuildSearchTemplateResponse prepares the search-card response contract.
+func (s *ArtistService) BuildSearchResults(artists []models.Artist) []dto.ArtistSearchItem {
+	results := make([]dto.ArtistSearchItem, 0, len(artists))
+	for _, artist := range artists {
+		results = append(results, dto.ArtistSearchItem{
+			ID:         artist.ID,
+			Name:       artist.Name,
+			ImageURL:   artist.ImageURL,
+			IsVerified: artist.IsVerified,
+		})
+	}
+
+	return results
 }
