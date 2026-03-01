@@ -29,6 +29,7 @@ const videoCols = `
 	width,
 	height,
 	thumbnail_status,
+	thumbnail_processing_started_at,
 	detection_status,
 	created_at,
 	updated_at,
@@ -58,6 +59,7 @@ func scanVideo(row pgx.Row) (*models.Video, error) {
 		&v.Width,
 		&v.Height,
 		&v.ThumbnailStatus,
+		&v.ThumbnailProcessingStartedAt,
 		&v.DetectionStatus,
 		&v.CreatedAt,
 		&v.UpdatedAt,
@@ -191,7 +193,7 @@ func (s *Store) SetUploadStatusCompleted(ctx context.Context, videoID int) error
 // FOR UPDATE SKIP LOCKED prevents double-claiming across concurrent workers/instances.
 func (s *Store) ClaimQueuedThumbnails(ctx context.Context, limit int) ([]*models.Video, error) {
 	const q = `
-	UPDATE videos SET thumbnail_status = $1, updated_at = NOW()
+	UPDATE videos SET thumbnail_status = $1, thumbnail_processing_started_at = NOW(), updated_at = NOW()
 	WHERE id IN (
 		SELECT id FROM videos
 		WHERE thumbnail_status = $2 AND deleted_at IS NULL
@@ -270,8 +272,8 @@ func (s *Store) SetThumbnailStatusFailed(ctx context.Context, videoID int) error
 // ResetStuckThumbnailVideos resets videos stuck in thumbnail_status = processing back to queued.
 func (s *Store) ResetStuckThumbnailVideos(ctx context.Context, stuckAfter time.Duration) error {
 	const q = `
-	UPDATE videos SET thumbnail_status = $1, updated_at = NOW()
-	WHERE thumbnail_status = $2 AND deleted_at IS NULL AND updated_at < $3`
+	UPDATE videos SET thumbnail_status = $1, thumbnail_processing_started_at = NULL, updated_at = NOW()
+	WHERE thumbnail_status = $2 AND deleted_at IS NULL AND thumbnail_processing_started_at < $3`
 	cutoff := time.Now().Add(-stuckAfter)
 	_, err := s.pool.Exec(ctx, q, models.VideoThumbnailStatusQueued, models.VideoThumbnailStatusProcessing, cutoff)
 	return err

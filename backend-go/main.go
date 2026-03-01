@@ -81,7 +81,7 @@ func main() {
 		log.Fatalf("Failed to initialize media service: %v", err)
 	}
 	thumbnailService := services.NewThumbnailService(store, mediaService, uploadService)
-	jobQueue := services.NewJobQueueService(store, thumbnailService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.SchedulerInterval, cfg.Concurrency.StuckThreshold)
+	jobQueue := services.NewJobQueueService(store, thumbnailService, cfg.Concurrency.Concurrency, cfg.Concurrency.QueueSize, cfg.Concurrency.SchedulerInterval, cfg.Concurrency.StuckThreshold, cfg.Concurrency.ResetInterval)
 	jobQueue.Start(ctx)
 	videoService := services.NewVideoService(store, uploadService)
 
@@ -131,7 +131,8 @@ func main() {
 			usersResolved := users.Group("")
 			usersResolved.Use(authMiddleware, middleware.ResolveUser(store))
 			{
-				usersResolved.POST("/me", userHandler.Me)
+				usersResolved.GET("/me", userHandler.Me)
+				usersResolved.PATCH("/me", userHandler.UpdateProfile)
 			}
 		}
 
