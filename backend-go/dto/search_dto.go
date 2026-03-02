@@ -88,7 +88,7 @@ type UserSearchItem struct {
 	ID                int     `json:"id"`
 	Username          string  `json:"username"`
 	DisplayName       string  `json:"display_name"`
-	ProfilePictureURL *string `json:"profile_picture_url,omitempty"`
+	ProfilePictureURL *string `json:"profile_picture,omitempty"`
 }
 
 type UserSearchResponse struct {
