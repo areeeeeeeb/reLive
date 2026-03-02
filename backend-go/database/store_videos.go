@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 	"github.com/jackc/pgx/v5"
 )
 

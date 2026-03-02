@@ -3,7 +3,7 @@ package services
 import (
 	"fmt"
 
-	"github.com/areeeeeeeb/reLive/backend-go/dto"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/dto"
 )
 
 // SearchService is a shared toolkit for local search operations.

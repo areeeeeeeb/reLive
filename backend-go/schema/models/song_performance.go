@@ -15,10 +15,9 @@ type SongPerformance struct {
 	ID        int        `db:"id" json:"id"`
 	ActID     int        `db:"act_id" json:"act_id"`
 	SongID    int        `db:"song_id" json:"song_id"`
-	Position  *int       `db:"position" json:"position,omitempty"`   // position in the setlist
+	Position  *int       `db:"position" json:"position,omitempty"` // position in the setlist
 	StartedAt *time.Time `db:"started_at" json:"started_at,omitempty"`
 
 	CreatedAt time.Time  `db:"created_at" json:"created_at"`
 	DeletedAt *time.Time `db:"deleted_at" json:"-"`
 }
-

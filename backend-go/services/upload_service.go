@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/areeeeeeeb/reLive/backend-go/dto"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/dto"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"

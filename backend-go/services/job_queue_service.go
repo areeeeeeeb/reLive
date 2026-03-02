@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 	"github.com/areeeeeeeb/reLive/backend-go/workers"
 )
 

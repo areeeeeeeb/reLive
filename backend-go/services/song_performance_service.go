@@ -5,7 +5,7 @@ import (
 
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 )
 
 type SongPerformanceService struct {

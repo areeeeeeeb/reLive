@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
-	"github.com/areeeeeeeb/reLive/backend-go/dto"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/dto"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 )
 
 type UserService struct {
@@ -44,7 +44,6 @@ func (s *UserService) GetByID(ctx context.Context, userID int) (*models.User, er
 func (s *UserService) UpdateProfile(ctx context.Context, userID int, displayName string, profilePicture *string, bio *string) (*models.User, error) {
 	return s.store.UpdateUserProfile(ctx, userID, displayName, profilePicture, bio)
 }
-
 
 func (s *UserService) Search(ctx context.Context, req dto.SearchRequest) (*dto.UserSearchResponse, error) {
 	if err := s.searchService.ValidateMaxResults(req.MaxResults); err != nil {

@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 )
 
 const (
-	thumbnailOffsetFraction = 0.10             // extract frame at 10% into the video
-	thumbnailOffsetFallback = 5.0              // seconds — used when duration is unknown
+	thumbnailOffsetFraction = 0.10 // extract frame at 10% into the video
+	thumbnailOffsetFallback = 5.0  // seconds — used when duration is unknown
 	presignGetTTL           = 15 * time.Minute
 )
 

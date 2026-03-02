@@ -11,7 +11,7 @@ import "time"
 type Artist struct {
 	ID              int        `db:"id" json:"id"`
 	Name            string     `db:"name" json:"name"`
-	MusicBrainzID   *string    `db:"musicbrainz_id" json:"musicbrainz_id,omitempty"`  // maps to GROUP or PERSON
+	MusicBrainzID   *string    `db:"musicbrainz_id" json:"musicbrainz_id,omitempty"` // maps to GROUP or PERSON
 	SpotifyID       *string    `db:"spotify_id" json:"spotify_id,omitempty"`
 	RYMID           *string    `db:"rym_id" json:"rym_id,omitempty"`
 	ImageURL        *string    `db:"image_url" json:"image_url,omitempty"`
@@ -20,4 +20,3 @@ type Artist struct {
 	CreatedAt       time.Time  `db:"created_at" json:"created_at"`
 	DeletedAt       *time.Time `db:"deleted_at" json:"-"`
 }
-

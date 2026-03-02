@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
-	"github.com/areeeeeeeb/reLive/backend-go/dto"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/dto"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 )
 
 type ConcertService struct {
