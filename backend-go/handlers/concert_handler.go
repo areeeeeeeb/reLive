@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"net/http"
 	"strconv"
 
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
@@ -52,6 +53,31 @@ func (h *ConcertHandler) Get(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"concert": result})
+}
+
+// Search returns concerts matching a query string.
+//
+//	GET /concerts/search?q=eras+tour&max_results=10
+func (h *ConcertHandler) Search(c *gin.Context) {
+	var req dto.SearchRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.MaxResults <= 0 {
+		req.MaxResults = dto.SearchMaxResultsDefault
+	}
+	if req.MaxResults > dto.SearchMaxResultsMax {
+		req.MaxResults = dto.SearchMaxResultsMax
+	}
+
+	response, err := h.concertService.Search(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "concert search failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *ConcertHandler) ListActs(c *gin.Context) {

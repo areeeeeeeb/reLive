@@ -70,6 +70,25 @@ func (s *Store) GetArtistByID(ctx context.Context, id int) (*models.Artist, erro
 	return scanArtist(s.pool.QueryRow(ctx, q, id))
 }
 
+func (s *Store) ListArtistsByIDs(ctx context.Context, ids []int) ([]models.Artist, error) {
+	if len(ids) == 0 {
+		return []models.Artist{}, nil
+	}
+
+	const q = `
+	SELECT ` + artistCols + `
+	FROM artists
+	WHERE deleted_at IS NULL
+	  AND id = ANY($1::int[])`
+
+	rows, err := s.pool.Query(ctx, q, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	return scanArtists(rows, true)
+}
+
 func (s *Store) SearchArtists(ctx context.Context, query string, maxResults int) ([]models.Artist, error) {
 	query, likeQuery := prepareSearchQuery(query)
 

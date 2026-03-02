@@ -41,6 +41,22 @@ func scanUser(row pgx.Row) (*models.User, error) {
 	return &u, nil
 }
 
+func scanUsers(rows pgx.Rows, allowPartial bool) ([]models.User, error) {
+	defer rows.Close()
+	users := make([]models.User, 0)
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			if allowPartial {
+				continue
+			}
+			return users, err
+		}
+		users = append(users, *u)
+	}
+	return users, rows.Err()
+}
+
 func (s *Store) GetUserByID(ctx context.Context, userID int) (*models.User, error) {
 	const q = `
 	SELECT ` + userCols + `
@@ -107,3 +123,32 @@ func (s *Store) UpsertUser(ctx context.Context, user *models.User) (*models.User
 	))
 }
 
+func (s *Store) SearchUsers(ctx context.Context, query string, maxResults int) ([]models.User, error) {
+	query, likeQuery := prepareSearchQuery(query)
+
+	const q = `
+	SELECT ` + userCols + `
+	FROM users
+	WHERE deleted_at IS NULL
+	  AND (
+	    username ILIKE $2
+	    OR display_name ILIKE $2
+	    OR similarity(username, $1) >= $4
+	    OR similarity(display_name, $1) >= $4
+	  )
+	ORDER BY
+	  (lower(username) = lower($1)) DESC,
+	  (lower(display_name) = lower($1)) DESC,
+	  (username ILIKE $1 || '%') DESC,
+	  (display_name ILIKE $1 || '%') DESC,
+	  GREATEST(similarity(username, $1), similarity(display_name, $1)) DESC,
+	  username ASC
+	LIMIT $3`
+
+	rows, err := s.pool.Query(ctx, q, query, likeQuery, maxResults, s.searchTrgmSimilarityThreshold)
+	if err != nil {
+		return nil, err
+	}
+
+	return scanUsers(rows, true)
+}

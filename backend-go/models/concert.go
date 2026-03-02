@@ -15,15 +15,14 @@ import "time"
 // Solo show:     ArtistID set + 1 act
 // Multi-artist:  ArtistID NULL + N acts (each with act_type: main, opener, etc.)
 type Concert struct {
-	ID          int        `db:"id" json:"id"`
-	Name        *string    `db:"name" json:"name,omitempty"`
-	Date        time.Time  `db:"date" json:"date"`
+	ID   int       `db:"id" json:"id"`
+	Name string    `db:"name" json:"name"`
+	Date time.Time `db:"date" json:"date"`
 
-	VenueID     *int       `db:"venue_id" json:"venue_id,omitempty"`
-	ArtistID    *int       `db:"artist_id" json:"artist_id,omitempty"` // main/primary artist, nullable for multi-artist
-	SetlistFmID *string    `db:"setlistfm_id" json:"setlistfm_id,omitempty"`
+	VenueID     *int    `db:"venue_id" json:"venue_id,omitempty"`
+	ArtistID    *int    `db:"artist_id" json:"artist_id,omitempty"` // main/primary artist, nullable for multi-artist
+	SetlistFmID *string `db:"setlistfm_id" json:"setlistfm_id,omitempty"`
 
-	CreatedAt   time.Time  `db:"created_at" json:"created_at"`
-	DeletedAt   *time.Time `db:"deleted_at" json:"-"`
+	CreatedAt time.Time  `db:"created_at" json:"created_at"`
+	DeletedAt *time.Time `db:"deleted_at" json:"-"`
 }
-
