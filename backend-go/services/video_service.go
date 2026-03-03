@@ -7,8 +7,8 @@ import (
 
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
 	"github.com/areeeeeeeb/reLive/backend-go/database"
-	"github.com/areeeeeeeb/reLive/backend-go/dto"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/dto"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 	"github.com/google/uuid"
 )
 

@@ -3,7 +3,7 @@ package dto
 import (
 	"time"
 
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 )
 
 // ConcertDetectRequest holds client-provided metadata used to match against concerts.

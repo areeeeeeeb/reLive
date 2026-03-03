@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/areeeeeeeb/reLive/backend-go/apperr"
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 	"github.com/jackc/pgx/v5"
 )
 

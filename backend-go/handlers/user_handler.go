@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/areeeeeeeb/reLive/backend-go/dto"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/dto"
 	"github.com/areeeeeeeb/reLive/backend-go/services"
 	"github.com/gin-gonic/gin"
 )

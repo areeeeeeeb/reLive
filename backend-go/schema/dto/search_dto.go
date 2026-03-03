@@ -40,12 +40,12 @@ type SearchResponseMeta struct {
 // -----CONCERT SEARCH
 // add IsVariousArtist later
 type ConcertSearchItem struct {
-	ID              int            `json:"id"`
-	Name            string         `json:"name"`
-	Date            time.Time      `json:"date"`
-	PrimaryArtist   *ArtistCompact `json:"primary_artist,omitempty"`
-	Venue           *VenueCompact  `json:"venue,omitempty"`
-	ImageURL        *string        `json:"image_url,omitempty"`
+	ID            int            `json:"id"`
+	Name          string         `json:"name"`
+	Date          time.Time      `json:"date"`
+	PrimaryArtist *ArtistCompact `json:"primary_artist,omitempty"`
+	Venue         *VenueCompact  `json:"venue,omitempty"`
+	ImageURL      *string        `json:"image_url,omitempty"`
 }
 
 type ConcertSearchResponse struct {

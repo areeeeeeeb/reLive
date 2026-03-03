@@ -9,10 +9,9 @@ type Store struct {
 	searchTrgmSimilarityThreshold float64
 }
 
-func NewStore(pool *pgxpool.Pool, searchTrgmSimilarityThreshold float64) (*Store) {
+func NewStore(pool *pgxpool.Pool, searchTrgmSimilarityThreshold float64) *Store {
 	return &Store{
 		pool:                          pool,
 		searchTrgmSimilarityThreshold: searchTrgmSimilarityThreshold,
 	}
 }
-

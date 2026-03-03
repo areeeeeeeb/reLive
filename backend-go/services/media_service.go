@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/areeeeeeeb/reLive/backend-go/models"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/models"
 )
 
 const (
@@ -173,10 +173,10 @@ func (m *MediaService) ExtractFrame(ctx context.Context, filePath string, offset
 		"-ss", fmt.Sprintf("%.2f", offsetSeconds), // -ss before -i is fast seek. fast but may be slightly off
 		"-i", filePath,
 		"-frames:v", ffmpegFrameCount, // output exactly 1 frame
-		"-f", "image2",                // output format
-		"-c:v", "mjpeg",               // codec
-		"-q:v", ffmpegJPEGQuality,     // quality
-		"pipe:1",           // output JPEG bytes to stdout, so we can output with cmd.Output()
+		"-f", "image2", // output format
+		"-c:v", "mjpeg", // codec
+		"-q:v", ffmpegJPEGQuality, // quality
+		"pipe:1", // output JPEG bytes to stdout, so we can output with cmd.Output()
 	)
 
 	output, err := cmd.Output()

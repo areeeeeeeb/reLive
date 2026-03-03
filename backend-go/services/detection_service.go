@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/areeeeeeeb/reLive/backend-go/database"
-	"github.com/areeeeeeeb/reLive/backend-go/dto"
+	"github.com/areeeeeeeb/reLive/backend-go/schema/dto"
 )
 
 // DetectionService contains all detection logic when the client explicitly triggers a detect request
