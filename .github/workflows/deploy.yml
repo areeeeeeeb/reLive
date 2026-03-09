@@ -28,7 +28,7 @@ jobs:
       # Authenticate with GitHub Container Registry using the built-in GITHUB_TOKEN.
       # No PAT needed since the image namespace matches the repo owner (areeeeeeeb).
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
