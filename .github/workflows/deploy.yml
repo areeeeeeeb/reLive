@@ -36,7 +36,7 @@ jobs:
 
       # Required for build-push-action to support platform targeting
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Build the Docker image from backend-go/Dockerfile and push two tags:
       # - :latest for DigitalOcean to pull on deploy
